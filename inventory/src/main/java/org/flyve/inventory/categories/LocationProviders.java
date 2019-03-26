@@ -1,32 +1,27 @@
 /**
+ *  LICENSE
  *
- * Copyright 2017 Teclib.
- * Copyright 2010-2016 by the FusionInventory Development
+ *  This file is part of Flyve MDM Inventory Library for Android.
+ * 
+ *  Inventory Library for Android is a subproject of Flyve MDM.
+ *  Flyve MDM is a mobile device management software.
  *
- * http://www.fusioninventory.org/
- * https://github.com/fusioninventory/fusioninventory-android
+ *  Flyve MDM is free software: you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 3
+ *  of the License, or (at your option) any later version.
  *
- * ------------------------------------------------------------------------
- *
- * LICENSE
- *
- * This file is part of FusionInventory project.
- *
- * FusionInventory is free software: you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * FusionInventory is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * ------------------------------------------------------------------------------
- * @update    07/06/2017
- * @license   GPLv2 https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * @link      https://github.com/fusioninventory/fusioninventory-android
- * @link      http://www.fusioninventory.org/
- * ------------------------------------------------------------------------------
+ *  Flyve MDM is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  ---------------------------------------------------------------------
+ *  @copyright Copyright © 2018 Teclib. All rights reserved.
+ *  @license   GPLv3 https://www.gnu.org/licenses/gpl-3.0.html
+ *  @link      https://github.com/flyve-mdm/android-inventory-library
+ *  @link      https://flyve-mdm.com
+ *  @link      http://flyve.org/android-inventory-library
+ *  ---------------------------------------------------------------------
  */
 
 package org.flyve.inventory.categories;
@@ -36,7 +31,8 @@ import android.content.Context;
 import android.location.LocationManager;
 import android.location.LocationProvider;
 
-import org.flyve.inventory.FILog;
+import org.flyve.inventory.CommonErrorType;
+import org.flyve.inventory.FlyveLog;
 
 import java.util.List;
 
@@ -56,6 +52,7 @@ public class LocationProviders extends Categories {
      *  from: https://stackoverflow.com/questions/285793/what-is-a-serialversionuid-and-why-should-i-use-it
      */
     private static final long serialVersionUID = 6066226866162586918L;
+    private final Context context;
 
     /**
      * This constructor load the context and the Location Providers information
@@ -64,21 +61,25 @@ public class LocationProviders extends Categories {
     public LocationProviders(Context xCtx) {
         super(xCtx);
 
+        context = xCtx;
+
         try {
-            LocationManager lLocationMgr = (LocationManager) xCtx.getSystemService(Service.LOCATION_SERVICE);
+            LocationManager lLocationMgr = (LocationManager) context.getSystemService(Service.LOCATION_SERVICE);
 
-            List<String> lProvidersName = lLocationMgr.getAllProviders();
+            if (lLocationMgr != null) {
+                List<String> lProvidersName = lLocationMgr.getAllProviders();
 
-            for (String p : lProvidersName) {
-                Category c = new Category("LOCATION_PROVIDERS", "locationProviders");
+                for (String p : lProvidersName) {
+                    Category c = new Category("LOCATION_PROVIDERS", "locationProviders");
 
-                LocationProvider lProvider = lLocationMgr.getProvider(p);
-                c.put("NAME", new CategoryValue(getName(lProvider), "NAME", "name"));
+                    LocationProvider lProvider = lLocationMgr.getProvider(p);
+                    c.put("NAME", new CategoryValue(getName(lProvider), "NAME", "name"));
 
-                this.add(c);
+                    this.add(c);
+                }
             }
         } catch (Exception ex) {
-            FILog.e(ex.getMessage());
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.LOCATION, ex.getMessage()));
         }
     }
 
@@ -88,6 +89,12 @@ public class LocationProviders extends Categories {
      * @return string the name of the provider
      */
     public String getName(LocationProvider lProvider) {
-        return lProvider.getName();
+        String value  = "N/A";
+        try {
+            value = lProvider.getName();
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.LOCATION_NAME, ex.getMessage()));
+        }
+        return value;
     }
 }

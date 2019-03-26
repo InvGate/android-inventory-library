@@ -1,32 +1,27 @@
 /**
+ *  LICENSE
  *
- * Copyright 2017 Teclib.
- * Copyright 2010-2016 by the FusionInventory Development
+ *  This file is part of Flyve MDM Inventory Library for Android.
+ * 
+ *  Inventory Library for Android is a subproject of Flyve MDM.
+ *  Flyve MDM is a mobile device management software.
  *
- * http://www.fusioninventory.org/
- * https://github.com/fusioninventory/fusioninventory-android
+ *  Flyve MDM is free software: you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 3
+ *  of the License, or (at your option) any later version.
  *
- * ------------------------------------------------------------------------
- *
- * LICENSE
- *
- * This file is part of FusionInventory project.
- *
- * FusionInventory is free software: you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * FusionInventory is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * ------------------------------------------------------------------------------
- * @update    07/06/2017
- * @license   GPLv2 https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * @link      https://github.com/fusioninventory/fusioninventory-android
- * @link      http://www.fusioninventory.org/
- * ------------------------------------------------------------------------------
+ *  Flyve MDM is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  ---------------------------------------------------------------------
+ *  @copyright Copyright © 2018 Teclib. All rights reserved.
+ *  @license   GPLv3 https://www.gnu.org/licenses/gpl-3.0.html
+ *  @link      https://github.com/flyve-mdm/android-inventory-library
+ *  @link      https://flyve-mdm.com
+ *  @link      http://flyve.org/android-inventory-library
+ *  ---------------------------------------------------------------------
  */
 
 package org.flyve.inventory.categories;
@@ -34,11 +29,24 @@ package org.flyve.inventory.categories;
 import android.content.Context;
 import android.os.Build;
 import android.provider.Settings.Secure;
-import android.text.format.DateFormat;
 
-import org.flyve.inventory.FILog;
+import org.flyve.inventory.CommonErrorType;
+import org.flyve.inventory.FlyveLog;
+import org.flyve.inventory.Utils;
+import org.w3c.dom.Document;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Properties;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 
 /**
  * This class get all the information of the Environment
@@ -65,8 +73,9 @@ public class Hardware extends Categories {
 //                        VMHOSTSERIAL, ARCHNAME)>
 
     private Properties props;
-    private Context xCtx;
+    private Context context;
     private static final String OSNAME = "Android";
+    private ArrayList<String> userInfo = new ArrayList<>();
 
     /**
      * Indicates whether some other object is "equal to" this one
@@ -75,13 +84,7 @@ public class Hardware extends Categories {
      */
     @Override
     public boolean equals(Object obj) {
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        return (!super.equals(obj));
+        return obj != null && getClass() == obj.getClass() && (!super.equals(obj));
     }
 
     /**
@@ -91,8 +94,9 @@ public class Hardware extends Categories {
     @Override
     public int hashCode() {
         int hash = super.hashCode();
-        hash = 89 * hash + (this.xCtx != null ? this.xCtx.hashCode() : 0);
+        hash = 89 * hash + (this.context != null ? this.context.hashCode() : 0);
         hash = 89 * hash + (this.props != null ? this.props.hashCode() : 0);
+        hash = 89 * hash + (this.userInfo != null ? this.userInfo.hashCode() : 0);
         return hash;
     }
 
@@ -103,57 +107,125 @@ public class Hardware extends Categories {
     public Hardware(Context xCtx) {
         super(xCtx);
 
-        this.xCtx = xCtx;
+        this.context = xCtx;
+
+        props = System.getProperties();
 
         try {
-            props = System.getProperties();
-            Memory memory = new Memory(xCtx);
+            getUserInfo();
 
             Category c = new Category("HARDWARE", "hardware");
 
-            c.put("DATELASTLOGGEDUSER", new CategoryValue(getDatelastloggeduser(), "DATELASTLOGGEDUSER", "dateLastLoggedUser"));
-            c.put("LASTLOGGEDUSER", new CategoryValue(getLastloggeduser(), "LASTLOGGEDUSER", "lastLoggedUser"));
+            c.put("DATELASTLOGGEDUSER", new CategoryValue(getDateLastLoggedUser(), "DATELASTLOGGEDUSER", "dateLastLoggedUser"));
+            c.put("LASTLOGGEDUSER", new CategoryValue(getLastLoggedUser(), "LASTLOGGEDUSER", "lastLoggedUser"));
             c.put("NAME", new CategoryValue(getName(), "NAME", "name"));
             c.put("OSNAME", new CategoryValue(OSNAME, "OSNAME", "osName"));
-            c.put("OSVERSION", new CategoryValue(getOsversion(), "OSVERSION", "osVersion"));
-            c.put("ARCHNAME", new CategoryValue(getArchname(), "ARCHNAME", "archName"));
+            c.put("OSVERSION", new CategoryValue(getOsVersion(), "OSVERSION", "osVersion"));
+            c.put("ARCHNAME", new CategoryValue(getArchName(), "ARCHNAME", "archName"));
             c.put("UUID", new CategoryValue(getUUID(), "UUID", "uuid"));
-
-            String vMemory = memory.getCapacity();
-
-            c.put("MEMORY", new CategoryValue(vMemory, "MEMORY", "memory"));
+            c.put("USERID", new CategoryValue(getUserId(), "USERID", "userid"));
+            c.put("MEMORY", new CategoryValue(new Memory(xCtx).getCapacity(), "MEMORY", "memory"));
 
             this.add(c);
         } catch (Exception ex) {
-            FILog.e(ex.getMessage());
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.HARDWARE, ex.getMessage()));
         }
+    }
 
+    /**
+     * Get the if of the user logged
+     * @return string id user logged
+     */
+    public String getUserId() {
+        return getUserTagValue("id");
     }
 
     /**
      * Get the date of the last time the user logged
      * @return string the date in simple format
      */
-    public String getDatelastloggeduser() {
-        return String.valueOf(DateFormat.format("MM/dd/yy", Build.TIME));
+    public String getDateLastLoggedUser() {
+        String value = "N/A";
+        try {
+            String lastLoggedIn = getUserTagValue("lastLoggedIn");
+            if (!"N/A".equals(lastLoggedIn)) {
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-mm-dd HH:mm", Locale.getDefault());
+                Date resultDate = new Date(Long.parseLong(lastLoggedIn));
+                value = sdf.format(resultDate);
+            }
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.HARDWARE_DATE_LAST_LOGGED_USER, ex.getMessage()));
+        }
+        return value;
     }
 
     /**
      * Get the name of the last logged user
      * @return string the user name
      */
-    public String getLastloggeduser() {
-        String mLastloggeduser = "";
-        if (!Build.USER.equals(Build.UNKNOWN)) {
-            mLastloggeduser = Build.USER;
-        } else {
-            String user = props.getProperty("user.name");
-            if (!user.equals("")) {
-                mLastloggeduser = props.getProperty("user.name");
+    public String getLastLoggedUser() {
+        String value = "N/A";
+        try {
+            if (userInfo.size() > 0 && userInfo.get(2) != null) {
+                DocumentBuilder newDocumentBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+                String info = userInfo.get(2).trim();
+                Document parse = newDocumentBuilder.parse(new ByteArrayInputStream(info.getBytes()));
+                value = parse.getFirstChild().getTextContent();
             }
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.HARDWARE_LAST_LOGGED_USER, ex.getMessage()));
         }
+        return value;
+    }
 
-        return mLastloggeduser;
+    /**
+     * Get the user tag of the last logged user
+     * @return string the user tag
+     */
+    private String getUserTagValue(String tagName) {
+        String evaluate = "";
+        String value = "N/A";
+        try {
+            if (userInfo.size() > 0 && userInfo.get(1) != null) {
+                String removeChar = userInfo.get(1).replaceAll("[\"><]", "");
+                if (removeChar.contains("user ")) {
+                    evaluate = removeChar.replaceAll(" ", ",").trim();
+                }
+                String[] splitValues = evaluate.split(",");
+                Map<String, String> results = new HashMap<>();
+                for (String a : splitValues) {
+                    if (a.contains("=")) {
+                        String[] keyValues = a.split("=", 2);
+                        String key = keyValues[0];
+                        String valueResult = keyValues[1];
+                        results.put(key, valueResult);
+                    }
+                }
+                return results.get(tagName) == null ? "N/A" : results.get(tagName);
+            } else {
+                return value;
+            }
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.HARDWARE_USER_TAG, ex.getMessage()));
+        }
+        return value;
+    }
+
+    /**
+     * Get user info of the last logged user from an XML
+     */
+    private void getUserInfo() {
+        userInfo = new ArrayList<>();
+        try {
+            String temp;
+            String[] values = {"su", "cat /data/system/users/0.xml\n", "exit\n"};
+            BufferedReader catInfo = Utils.getBufferedSequentialCatInfo(values);
+            while ((temp = catInfo.readLine()) != null) {
+                userInfo.add(temp);
+            }
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.HARDWARE_USER_INFO, ex.getMessage()));
+        }
     }
 
     /**
@@ -161,23 +233,41 @@ public class Hardware extends Categories {
      * @return string with the model
      */
     public String getName() {
-        return Build.MODEL;
+        String value = "N/A";
+        try {
+            value = Utils.getSystemProperty("net.hostname");
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.HARDWARE_NAME, ex.getMessage()));
+        }
+        return value.trim();
     }
 
     /**
      * Get the OS version
      * @return string the version
      */
-    public String getOsversion() {
-        return Build.VERSION.RELEASE;
+    public String getOsVersion() {
+        String value = "N/A";
+        try {
+            value = Build.VERSION.RELEASE;
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.HARDWARE_VERSION, ex.getMessage()));
+        }
+        return value;
     }
 
     /**
      * Get the name of the architecture
      * @return string the OS architecture
      */
-    public String getArchname() {
-        return props.getProperty("os.arch");
+    public String getArchName() {
+        String value = "N/A";
+        try {
+            value = props.getProperty("os.arch");
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.HARDWARE_ARCH_NAME, ex.getMessage()));
+        }
+        return value;
     }
 
     /**
@@ -185,7 +275,13 @@ public class Hardware extends Categories {
      * @return string the Android ID
      */
     public String getUUID() {
-        return Secure.getString(xCtx.getContentResolver(), Secure.ANDROID_ID);
+        String value = "N/A";
+        try {
+            value = Secure.getString(context.getContentResolver(), Secure.ANDROID_ID);
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.HARDWARE_UUID, ex.getMessage()));
+        }
+        return value;
     }
 
 }

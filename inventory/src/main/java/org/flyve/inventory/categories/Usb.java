@@ -1,43 +1,38 @@
 /**
+ *  LICENSE
  *
- * Copyright 2017 Teclib.
- * Copyright 2010-2016 by the FusionInventory Development
+ *  This file is part of Flyve MDM Inventory Library for Android.
+ * 
+ *  Inventory Library for Android is a subproject of Flyve MDM.
+ *  Flyve MDM is a mobile device management software.
  *
- * http://www.fusioninventory.org/
- * https://github.com/fusioninventory/fusioninventory-android
+ *  Flyve MDM is free software: you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 3
+ *  of the License, or (at your option) any later version.
  *
- * ------------------------------------------------------------------------
- *
- * LICENSE
- *
- * This file is part of FusionInventory project.
- *
- * FusionInventory is free software: you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * FusionInventory is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * ------------------------------------------------------------------------------
- * @update    07/06/2017
- * @license   GPLv2 https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * @link      https://github.com/fusioninventory/fusioninventory-android
- * @link      http://www.fusioninventory.org/
- * ------------------------------------------------------------------------------
+ *  Flyve MDM is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  ---------------------------------------------------------------------
+ *  @copyright Copyright © 2018 Teclib. All rights reserved.
+ *  @license   GPLv3 https://www.gnu.org/licenses/gpl-3.0.html
+ *  @link      https://github.com/flyve-mdm/android-inventory-library
+ *  @link      https://flyve-mdm.com
+ *  @link      http://flyve.org/android-inventory-library
+ *  ---------------------------------------------------------------------
  */
 
 package org.flyve.inventory.categories;
 
 import android.content.Context;
-import android.hardware.usb.UsbDevice;
-import android.hardware.usb.UsbManager;
 
-import org.flyve.inventory.FILog;
+import org.flyve.inventory.CommonErrorType;
+import org.flyve.inventory.FlyveLog;
+import org.flyve.inventory.usbManager.SysBusUsbDevice;
+import org.flyve.inventory.usbManager.SysBusUsbManager;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -56,6 +51,8 @@ public class Usb extends Categories {
      *  from: https://stackoverflow.com/questions/285793/what-is-a-serialversionuid-and-why-should-i-use-it
      */
     private static final long serialVersionUID = 4846706700566208666L;
+	private SysBusUsbDevice usb;
+	private final Context context;
 
 	/**
 	 * This constructor load the context and the Usb information
@@ -63,63 +60,107 @@ public class Usb extends Categories {
 	 */
     public Usb(Context xCtx) {
         super(xCtx);
-        
-        //USB inventory comes with SDK level 12 !
+
+		context = xCtx;
+
+		//USB inventory comes with SDK level 12 !
         try {
+			usb = getSysBusUsbDevice();
 
-	        UsbManager manager = (UsbManager) xCtx.getSystemService(Context.USB_SERVICE);
-	        HashMap<String, UsbDevice> devices = manager.getDeviceList();
-			for (Map.Entry<String, UsbDevice> entry : devices.entrySet()) {
+			Category c = new Category("USBDEVICES", "usbDevices");
+			c.put("CLASS", new CategoryValue(getServiceClass(), "CLASS", "class"));
+			c.put("PRODUCTID", new CategoryValue(getPid(), "PRODUCTID", "productId"));
+			c.put("VENDORID", new CategoryValue(getVid(), "VENDORID", "vendorId"));
+			c.put("SUBCLASS", new CategoryValue(getDeviceSubClass(), "SUBCLASS", "subClass"));
+			c.put("MANUFACTURER", new CategoryValue(getReportedProductName(), "MANUFACTURER", "manufacturer"));
+			c.put("CAPTION", new CategoryValue(getUsbVersion(), "CAPTION", "caption"));
+			c.put("SERIAL", new CategoryValue(getSerialNumber(), "SERIAL", "serial"));
 
-				UsbDevice mydevice = devices.get(entry.getKey());
-				Category c = new Category("USBDEVICES", "usbDevices");
-
-				c.put("CLASS", new CategoryValue(getClass(mydevice), "CLASS", "class"));
-				c.put("PRODUCTID", new CategoryValue(getProductid(mydevice), "PRODUCTID", "productId"));
-				c.put("VENDORID", new CategoryValue(getVendorid(mydevice), "VENDORID", "vendorId"));
-				c.put("SUBCLASS", new CategoryValue(getSubclass(mydevice), "SUBCLASS", "subClass"));
-
-				this.add(c);
-			}
-        } catch (Exception ex) {
-			FILog.e(ex.getMessage());
+			this.add(c);
+		} catch (Exception ex) {
+			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.USB, ex.getMessage()));
 		}
 
     }
 
-	/**
-	 * Get the device's class field
-	 * @param mydevice UsbDevice
-	 * @return string the device's class
-	 */
-	public String getClass(UsbDevice mydevice) {
-		return Integer.toString(mydevice.getDeviceClass());
+	private SysBusUsbDevice getSysBusUsbDevice() {
+    	try {
+			SysBusUsbManager usbManager = new SysBusUsbManager("/sys/bus/usb/devices/");
+			Map<String, SysBusUsbDevice> devices = usbManager.getUsbDevices();
+			return devices.get("usb1");
+		} catch (Exception ex) {
+			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.USB_SYS_BUS, ex.getMessage()));
+		}
+		return null;
 	}
 
-	/**
-	 * Get the product ID
-	 * @param mydevice UsbDevice
-	 * @return string the product ID for the device
-	 */
-	public String getProductid(UsbDevice mydevice) {
-		return Integer.toString(mydevice.getProductId());
+	public String getServiceClass() {
+		String value = "N/A";
+		try {
+			if (usb != null) value = usb.getServiceClass();
+		} catch (Exception ex) {
+			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.USB_SERVICE, ex.getMessage()));
+		}
+		return value;
 	}
 
-	/**
-	 * Get the vendor ID
-	 * @param mydevice UsbDevice
-	 * @return string the vendor ID for the device
-	 */
-	public String getVendorid(UsbDevice mydevice) {
-		return Integer.toString(mydevice.getVendorId());
+	public String getPid() {
+		String value = "N/A";
+		try {
+			value = usb.getPid();
+		} catch (Exception ex) {
+			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.USB_PID, ex.getMessage()));
+		}
+		return value;
 	}
 
-	/**
-	 * Get the device's subclass field
-	 * @param mydevice UsbDevice
-	 * @return string the device's subclass
-	 */
-	public String getSubclass(UsbDevice mydevice) {
-		return Integer.toString(mydevice.getDeviceSubclass());
+	public String getVid() {
+		String value = "N/A";
+		try {
+			value = usb.getVid();
+		} catch (Exception ex) {
+			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.USB_VID, ex.getMessage()));
+		}
+		return value;
+	}
+
+	public String getDeviceSubClass() {
+		String value = "N/A";
+		try {
+			value = usb.getDeviceSubClass();
+		} catch (Exception ex) {
+			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.USB_DEVICE_SUB_CLASS, ex.getMessage()));
+		}
+		return value;
+	}
+
+	public String getReportedProductName() {
+		String value = "N/A";
+		try {
+			value = usb.getReportedProductName();
+		} catch (Exception ex) {
+			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.USB_REPORTED_PRODUCT_NAME, ex.getMessage()));
+		}
+		return value;
+	}
+
+	public String getUsbVersion() {
+		String value = "N/A";
+		try {
+			value = usb.getUsbVersion();
+		} catch (Exception ex) {
+			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.USB_USB_VERSION, ex.getMessage()));
+		}
+		return value;
+	}
+
+	public String getSerialNumber() {
+		String value = "N/A";
+		try {
+			value = usb.getSerialNumber();
+		} catch (Exception ex) {
+			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.USB_SERIAL_NUMBER, ex.getMessage()));
+		}
+		return value;
 	}
 }

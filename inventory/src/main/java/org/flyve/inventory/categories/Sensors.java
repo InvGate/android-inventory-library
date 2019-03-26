@@ -1,32 +1,27 @@
 /**
+ *  LICENSE
  *
- * Copyright 2017 Teclib.
- * Copyright 2010-2016 by the FusionInventory Development
+ *  This file is part of Flyve MDM Inventory Library for Android.
+ * 
+ *  Inventory Library for Android is a subproject of Flyve MDM.
+ *  Flyve MDM is a mobile device management software.
  *
- * http://www.fusioninventory.org/
- * https://github.com/fusioninventory/fusioninventory-android
+ *  Flyve MDM is free software: you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 3
+ *  of the License, or (at your option) any later version.
  *
- * ------------------------------------------------------------------------
- *
- * LICENSE
- *
- * This file is part of FusionInventory project.
- *
- * FusionInventory is free software: you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * FusionInventory is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * ------------------------------------------------------------------------------
- * @update    07/06/2017
- * @license   GPLv2 https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * @link      https://github.com/fusioninventory/fusioninventory-android
- * @link      http://www.fusioninventory.org/
- * ------------------------------------------------------------------------------
+ *  Flyve MDM is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  ---------------------------------------------------------------------
+ *  @copyright Copyright © 2018 Teclib. All rights reserved.
+ *  @license   GPLv3 https://www.gnu.org/licenses/gpl-3.0.html
+ *  @link      https://github.com/flyve-mdm/android-inventory-library
+ *  @link      https://flyve-mdm.com
+ *  @link      http://flyve.org/android-inventory-library
+ *  ---------------------------------------------------------------------
  */
 
 package org.flyve.inventory.categories;
@@ -35,7 +30,8 @@ import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
 
-import org.flyve.inventory.FILog;
+import org.flyve.inventory.CommonErrorType;
+import org.flyve.inventory.FlyveLog;
 
 import java.util.List;
 
@@ -55,6 +51,7 @@ public class Sensors extends Categories {
      *  from: https://stackoverflow.com/questions/285793/what-is-a-serialversionuid-and-why-should-i-use-it
      */
 	private static final long serialVersionUID = 4846706700566208666L;
+	private final Context context;
 
 	/**
 	 * This constructor load the context and the Sensors information
@@ -62,6 +59,8 @@ public class Sensors extends Categories {
 	 */
 	public Sensors(Context xCtx) {
 		super(xCtx);
+
+		context = xCtx;
 
 		try {
 			SensorManager sensorManager = (SensorManager) xCtx.getSystemService(Context.SENSOR_SERVICE);
@@ -79,7 +78,7 @@ public class Sensors extends Categories {
 				this.add(c);
 			}
 		} catch (Exception ex) {
-			FILog.e(ex.getMessage());
+			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.SENSORS, ex.getMessage()));
 		}
 	}
 
@@ -89,7 +88,13 @@ public class Sensors extends Categories {
 	 * @return string the sensor name
 	 */
 	public String getName(Sensor s) {
-		return s.getName();
+		String value = "N/A";
+		try {
+			value = s.getName();
+		} catch (Exception ex) {
+			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.SENSORS_NAME, ex.getMessage()));
+		}
+		return value;
 	}
 
 	/**
@@ -98,7 +103,13 @@ public class Sensors extends Categories {
 	 * @return string the vendor of the sensor
 	 */
 	public String getManufacturer(Sensor s) {
-		return s.getVendor();
+		String value = "N/A";
+		try {
+			value = s.getVendor();
+		} catch (Exception ex) {
+			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.SENSORS_MANUFACTURER, ex.getMessage()));
+		}
+		return value;
 	}
 
 	/**
@@ -107,38 +118,42 @@ public class Sensors extends Categories {
 	 * @return string the sensor type
 	 */
 	public String getType(Sensor s) {
-		String strtype;
-		int type = s.getType();
-		switch (type) {
-			case Sensor.TYPE_ACCELEROMETER:
-				strtype = "ACCELEROMETER";
-				break;
-			case Sensor.TYPE_GRAVITY:
-				strtype = "GRAVITY";
-				break;
-			case Sensor.TYPE_GYROSCOPE:
-				strtype = "GYROSCOPE";
-				break;
-			case Sensor.TYPE_LINEAR_ACCELERATION:
-				strtype = "LINEAR ACCELERATION";
-				break;
-			case Sensor.TYPE_MAGNETIC_FIELD:
-				strtype = "MAGNETIC FIELD";
-				break;
-			case Sensor.TYPE_PRESSURE:
-				strtype = "PRESSURE";
-				break;
-			case Sensor.TYPE_PROXIMITY:
-				strtype = "PROXIMITY";
-				break;
-			case Sensor.TYPE_ROTATION_VECTOR:
-				strtype = "ROTATION VECTOR";
-				break;
-			default:
-				strtype = "Unknow";
-				break;
+		String valueType = "N/A";
+		try {
+			int type = s.getType();
+			switch (type) {
+				case Sensor.TYPE_ACCELEROMETER:
+					valueType = "ACCELEROMETER";
+					break;
+				case Sensor.TYPE_GRAVITY:
+					valueType = "GRAVITY";
+					break;
+				case Sensor.TYPE_GYROSCOPE:
+					valueType = "GYROSCOPE";
+					break;
+				case Sensor.TYPE_LINEAR_ACCELERATION:
+					valueType = "LINEAR ACCELERATION";
+					break;
+				case Sensor.TYPE_MAGNETIC_FIELD:
+					valueType = "MAGNETIC FIELD";
+					break;
+				case Sensor.TYPE_PRESSURE:
+					valueType = "PRESSURE";
+					break;
+				case Sensor.TYPE_PROXIMITY:
+					valueType = "PROXIMITY";
+					break;
+				case Sensor.TYPE_ROTATION_VECTOR:
+					valueType = "ROTATION VECTOR";
+					break;
+				default:
+					valueType = "Unknow";
+					break;
+			}
+		} catch (Exception ex) {
+			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.SENSORS_TYPE, ex.getMessage()));
 		}
-		return strtype;
+		return valueType;
 	}
 
 	/**
@@ -147,7 +162,13 @@ public class Sensors extends Categories {
 	 * @return string the power used by the sensor while in use
 	 */
 	public String getPower(Sensor s) {
-		return String.valueOf(s.getPower());
+		String value = "N/A";
+		try {
+			value = String.valueOf(s.getPower());
+		} catch (Exception ex) {
+			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.SENSORS_POWER, ex.getMessage()));
+		}
+		return value;
 	}
 
 	/**
@@ -156,6 +177,12 @@ public class Sensors extends Categories {
 	 * @return string the version
 	 */
 	public String getVersion(Sensor s) {
-		return String.valueOf(s.getVersion());
+		String value = "N/A";
+		try {
+			value = String.valueOf(s.getVersion());
+		} catch (Exception ex) {
+			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.SENSORS_VERSION, ex.getMessage()));
+		}
+		return value;
 	}
 }

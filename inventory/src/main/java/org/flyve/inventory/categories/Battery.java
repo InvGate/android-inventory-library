@@ -1,43 +1,39 @@
 /**
+ *  LICENSE
  *
- * Copyright 2017 Teclib.
- * Copyright 2010-2016 by the FusionInventory Development
+ *  This file is part of Flyve MDM Inventory Library for Android.
+ * 
+ *  Inventory Library for Android is a subproject of Flyve MDM.
+ *  Flyve MDM is a mobile device management software.
  *
- * http://www.fusioninventory.org/
- * https://github.com/fusioninventory/fusioninventory-android
+ *  Flyve MDM is free software: you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 3
+ *  of the License, or (at your option) any later version.
  *
- * ------------------------------------------------------------------------
- *
- * LICENSE
- *
- * This file is part of FusionInventory project.
- *
- * FusionInventory is free software: you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * FusionInventory is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * ------------------------------------------------------------------------------
- * @update    07/06/2017
- * @license   GPLv2 https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * @link      https://github.com/fusioninventory/fusioninventory-android
- * @link      http://www.fusioninventory.org/
- * ------------------------------------------------------------------------------
+ *  Flyve MDM is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  ---------------------------------------------------------------------
+ *  @copyright Copyright © 2018 Teclib. All rights reserved.
+ *  @license   GPLv3 https://www.gnu.org/licenses/gpl-3.0.html
+ *  @link      https://github.com/flyve-mdm/android-inventory-library
+ *  @link      https://flyve-mdm.com
+ *  @link      http://flyve.org/android-inventory-library
+ *  ---------------------------------------------------------------------
  */
 
- package org.flyve.inventory.categories;
+package org.flyve.inventory.categories;
 
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.BatteryManager;
+import android.os.Build;
 
-import org.flyve.inventory.FILog;
+import org.flyve.inventory.CommonErrorType;
+import org.flyve.inventory.FlyveLog;
 
 /**
  * This class get all the information of the baterry like level, voltage, temperature, status, health, technology
@@ -59,12 +55,8 @@ public class Battery extends Categories {
 	private static final long serialVersionUID = -4096347994131285426L;
 
 	// Properties of this component
-	private String level = "";
-	private String voltage = "";
-	private String temperature = "";
-	private String status = "";
-	private String health = "";
-	private String technology = "";
+	private final Intent batteryIntent;
+	private final Context context;
 
 	/**
      * Indicates whether some other object is "equal to" this one
@@ -89,12 +81,7 @@ public class Battery extends Categories {
 	@Override
 	public int hashCode() {
 		int hash = super.hashCode();
-		hash = 89 * hash + (this.level != null ? this.level.hashCode() : 0);
-		hash = 89 * hash + (this.voltage != null ? this.voltage.hashCode() : 0);
-		hash = 89 * hash + (this.temperature != null ? this.temperature.hashCode() : 0);
-		hash = 89 * hash + (this.status != null ? this.status.hashCode() : 0);
-		hash = 89 * hash + (this.health != null ? this.health.hashCode() : 0);
-		hash = 89 * hash + (this.technology != null ? this.technology.hashCode() : 0);
+		hash = 89 * hash + (this.batteryIntent != null ? this.batteryIntent.hashCode() : 0);
 		return hash;
 	}
 
@@ -104,84 +91,156 @@ public class Battery extends Categories {
 	 */
 	public Battery(Context xCtx) {
 		super(xCtx);
+		context = xCtx;
 
-		// Trigger BroadcastReceiver
-		xCtx.registerReceiver(this.myBatteryReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-		this.myBatteryReceiver.onReceive(xCtx, new Intent(Intent.ACTION_BATTERY_CHANGED));
+		IntentFilter batteryIntentFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+		batteryIntent = context.registerReceiver(null, batteryIntentFilter);
+
+		try {
+			if (batteryIntent != null) {
+				if (!getLevel().equals("0%")) {
+					// Load the information
+					Category c = new Category("BATTERIES", "batteries");
+					c.put("CHEMISTRY", new CategoryValue(getTechnology(), "CHEMISTRY", "chemistry"));
+					c.put("TEMPERATURE", new CategoryValue(getTemperature(), "TEMPERATURE", "temperature"));
+					c.put("VOLTAGE", new CategoryValue(getVoltage(), "VOLTAGE", "voltage"));
+					c.put("LEVEL", new CategoryValue(getLevel(), "LEVEL", "level"));
+					c.put("HEALTH", new CategoryValue(getBatteryHealth(), "HEALTH", "health"));
+					c.put("STATUS", new CategoryValue(getBatteryStatus(), "STATUS", "status"));
+					c.put("CAPACITY", new CategoryValue(getCapacity(), "CAPACITY", "capacity"));
+					this.add(c);
+				}
+			}
+		} catch (Exception ex) {
+			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.BATTERY, ex.getMessage()));
+		}
 	}
 
-	/**
-	 *  This BroadcastReceiver load the information of the component
-	 */
-	private BroadcastReceiver myBatteryReceiver = new BroadcastReceiver() {
+	public String getTechnology() {
+		String technology = "N/A";
+		try {
+			batteryIntent.getStringExtra("technology");
+			return technology;
+		} catch (Exception ex) {
+			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.BATTERY_TECHNOLOGY, ex.getMessage()));
+		}
+		return technology;
+	}
 
-		@Override
-		public void onReceive(Context context, Intent intent) {
+	public String getTemperature() {
+		String temperature = "N/A";
+		try {
+			float extra = batteryIntent.getIntExtra("temperature", 0);
+			temperature = String.valueOf(extra / 10) + "c";
+		} catch (Exception ex) {
+			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.BATTERY_TEMPERATURE, ex.getMessage()));
+		}
+		return temperature;
+	}
 
-			if (intent.getAction().equals(Intent.ACTION_BATTERY_CHANGED)) {
+	public String getVoltage() {
+		String voltage  = "N/A";
+		try {
+			voltage = String.valueOf((float) batteryIntent.getIntExtra("voltage", 0) / 1000) + "V";
+		} catch (Exception ex) {
+			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.BATTERY_VOLTAGE, ex.getMessage()));
+		}
+		return voltage;
+	}
 
-				level = String.valueOf(intent.getIntExtra("level", 0)) + "%";
+	public String getLevel() {
+		String level = "N/A";
+		try {
+			level = String.valueOf(batteryIntent.getIntExtra("level", 0)) + "%";
+		} catch (Exception ex) {
+			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.BATTERY_LEVEL, ex.getMessage()));
+		}
+		return level;
+	}
 
-				voltage = String
-						.valueOf((float) intent.getIntExtra("voltage", 0) / 1000)
-						+ "V";
+	public String getBatteryHealth() {
+		String health = "N/A";
+		try {
+			int intHealth = batteryIntent.getIntExtra("health",
+					BatteryManager.BATTERY_HEALTH_UNKNOWN);
+			if (intHealth == BatteryManager.BATTERY_HEALTH_GOOD) {
+				health = "Good";
+			} else if (intHealth == BatteryManager.BATTERY_HEALTH_OVERHEAT) {
+				health = "Over Heat";
+			} else if (intHealth == BatteryManager.BATTERY_HEALTH_DEAD) {
+				health = "Dead";
+			} else if (intHealth == BatteryManager.BATTERY_HEALTH_OVER_VOLTAGE) {
+				health = "Over Voltage";
+			} else if (intHealth == BatteryManager.BATTERY_HEALTH_UNSPECIFIED_FAILURE) {
+				health = "Unspecified Failure";
+			} else {
+				health = "Unknown";
+			}
+		} catch (Exception ex) {
+			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.BATTERY_HEALTH, ex.getMessage()));
+		}
+        return health;
+	}
 
-				temperature = String.valueOf((float) intent.getIntExtra(
-						"temperature", 0) / 10)
-						+ "c";
+	public String getBatteryStatus() {
+		String status  = "N/A";
+		try {
+			int intStatus = batteryIntent.getIntExtra("status",
+					BatteryManager.BATTERY_STATUS_UNKNOWN);
+			if (intStatus == BatteryManager.BATTERY_STATUS_CHARGING) {
+				status = "Charging";
+			} else if (intStatus == BatteryManager.BATTERY_STATUS_DISCHARGING) {
+				status = "Dis-charging";
+			} else if (intStatus == BatteryManager.BATTERY_STATUS_NOT_CHARGING) {
+				status = "Not charging";
+			} else if (intStatus == BatteryManager.BATTERY_STATUS_FULL) {
+				status = "Full";
+			} else {
+				status = "Unknown";
+			}
+		}  catch (Exception ex) {
+			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.BATTERY_STATUS, ex.getMessage()));
+		}
+        return status;
+	}
 
-				technology = intent.getStringExtra("technology");
+	public String getCapacity() {
+		String capacityValue = "N/A";
+		try {
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+				BatteryManager mBatteryManager = (BatteryManager) context.getSystemService(Context.BATTERY_SERVICE);
+				assert mBatteryManager != null;
+				Integer capacity = mBatteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
 
-				// get battery status
-				int intstatus = intent.getIntExtra("status",
-						BatteryManager.BATTERY_STATUS_UNKNOWN);
-				if (intstatus == BatteryManager.BATTERY_STATUS_CHARGING) {
-					status = "Charging";
-				} else if (intstatus == BatteryManager.BATTERY_STATUS_DISCHARGING) {
-					status = "Dis-charging";
-				} else if (intstatus == BatteryManager.BATTERY_STATUS_NOT_CHARGING) {
-					status = "Not charging";
-				} else if (intstatus == BatteryManager.BATTERY_STATUS_FULL) {
-					status = "Full";
-				} else {
-					status = "Unknown";
-				}
+				if (capacity == Integer.MIN_VALUE)
+					return String.valueOf(0);
 
-				// get battery health
-				int inthealth = intent.getIntExtra("health",
-						BatteryManager.BATTERY_HEALTH_UNKNOWN);
-				if (inthealth == BatteryManager.BATTERY_HEALTH_GOOD) {
-					health = "Good";
-				} else if (inthealth == BatteryManager.BATTERY_HEALTH_OVERHEAT) {
-					health = "Over Heat";
-				} else if (inthealth == BatteryManager.BATTERY_HEALTH_DEAD) {
-					health = "Dead";
-				} else if (inthealth == BatteryManager.BATTERY_HEALTH_OVER_VOLTAGE) {
-					health = "Over Voltage";
-				} else if (inthealth == BatteryManager.BATTERY_HEALTH_UNSPECIFIED_FAILURE) {
-					health = "Unspecified Failure";
-				} else {
-					health = "Unknown";
-				}
+				capacityValue = String.valueOf(capacity);
+			} else {
+				Object mPowerProfile;
+				double batteryCapacity = 0;
+				final String POWER_PROFILE_CLASS = "com.android.internal.os.PowerProfile";
 
 				try {
-                    if (!level.equals("0%")) {
-                        // Load the information
-                        Category c = new Category("BATTERIES", "batteries");
-                        c.put("CHEMISTRY", new CategoryValue(technology, "CHEMISTRY", "chemistry"));
-                        c.put("TEMPERATURE", new CategoryValue(temperature, "TEMPERATURE", "temperature"));
-                        c.put("VOLTAGE", new CategoryValue(voltage, "VOLTAGE", "voltage"));
-                        c.put("LEVEL", new CategoryValue(level, "LEVEL", "level"));
-                        c.put("HEALTH", new CategoryValue(health, "HEALTH", "health"));
-                        c.put("STATUS", new CategoryValue(status, "STATUS", "status"));
-                        Battery.this.add(c);
-                    }
-                } catch (Exception ex) {
-                    FILog.e(ex.getMessage());
-                }
+					mPowerProfile = Class.forName(POWER_PROFILE_CLASS)
+							.getConstructor(Context.class)
+							.newInstance(context);
 
+					batteryCapacity = (double) Class
+							.forName(POWER_PROFILE_CLASS)
+							.getMethod("getBatteryCapacity")
+							.invoke(mPowerProfile);
+
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+
+				capacityValue = String.valueOf(batteryCapacity);
 			}
+		}  catch (Exception ex) {
+			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.BATTERY_CAPACITY, ex.getMessage()));
 		}
+		return capacityValue;
+	}
 
-	};
 }

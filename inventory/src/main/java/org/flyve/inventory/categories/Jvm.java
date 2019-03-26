@@ -1,39 +1,35 @@
 /**
+ *  LICENSE
  *
- * Copyright 2017 Teclib.
- * Copyright 2010-2016 by the FusionInventory Development
+ *  This file is part of Flyve MDM Inventory Library for Android.
+ * 
+ *  Inventory Library for Android is a subproject of Flyve MDM.
+ *  Flyve MDM is a mobile device management software.
  *
- * http://www.fusioninventory.org/
- * https://github.com/fusioninventory/fusioninventory-android
+ *  Flyve MDM is free software: you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 3
+ *  of the License, or (at your option) any later version.
  *
- * ------------------------------------------------------------------------
- *
- * LICENSE
- *
- * This file is part of FusionInventory project.
- *
- * FusionInventory is free software: you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * FusionInventory is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * ------------------------------------------------------------------------------
- * @update    07/06/2017
- * @license   GPLv2 https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * @link      https://github.com/fusioninventory/fusioninventory-android
- * @link      http://www.fusioninventory.org/
- * ------------------------------------------------------------------------------
+ *  Flyve MDM is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  ---------------------------------------------------------------------
+ *  @copyright Copyright © 2018 Teclib. All rights reserved.
+ *  @license   GPLv3 https://www.gnu.org/licenses/gpl-3.0.html
+ *  @link      https://github.com/flyve-mdm/android-inventory-library
+ *  @link      https://flyve-mdm.com
+ *  @link      http://flyve.org/android-inventory-library
+ *  ---------------------------------------------------------------------
  */
 
 package org.flyve.inventory.categories;
 
 import android.content.Context;
 
-import org.flyve.inventory.FILog;
+import org.flyve.inventory.CommonErrorType;
+import org.flyve.inventory.FlyveLog;
 
 import java.util.Properties;
 
@@ -53,6 +49,7 @@ public class Jvm extends Categories {
      *  from: https://stackoverflow.com/questions/285793/what-is-a-serialversionuid-and-why-should-i-use-it
      */
 	private static final long serialVersionUID = 3291981487537599599L;
+    private final Context context;
 
     /**
      * This constructor load the context and the Java Virtual Machine information
@@ -61,7 +58,10 @@ public class Jvm extends Categories {
 	public Jvm(Context xCtx) {
         super(xCtx);
 
+        context = xCtx;
+
         try {
+
             Category c = new Category("JVMS", "jvms");
             Properties props = System.getProperties();
 
@@ -71,11 +71,11 @@ public class Jvm extends Categories {
             c.put("RUNTIME", new CategoryValue(getRuntime(props), "RUNTIME", "runtime"));
             c.put("HOME", new CategoryValue(getHome(props), "HOME", "home"));
             c.put("VERSION", new CategoryValue(getVersion(props), "VERSION", "version"));
-            c.put("CLASSPATH", new CategoryValue(getmClasspath(props), "CLASSPATH", "classPath"));
+            c.put("CLASSPATH", new CategoryValue(getClasspath(props), "CLASSPATH", "classPath"));
 
             this.add(c);
         } catch (Exception ex) {
-            FILog.e(ex.getMessage());
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.JVM, ex.getMessage()));
         }
     }
 
@@ -85,7 +85,13 @@ public class Jvm extends Categories {
      * @return string the JVM implementation name
      */
     public String getName(Properties props) {
-        return props.getProperty("java.vm.name");
+        String value = "N/A";
+        try {
+            value = props.getProperty("java.vm.name");
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.JVM_NAME, ex.getMessage()));
+        }
+        return value;
     }
 
     /**
@@ -94,7 +100,13 @@ public class Jvm extends Categories {
      * @return string the JVM vendor
      */
     public String getVendor(Properties props) {
-        return props.getProperty("java.vm.vendor");
+        String value  = "N/A";
+        try {
+            value = props.getProperty("java.vm.vendor");
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.JVM_VENDOR, ex.getMessage()));
+        }
+        return value;
     }
 
     /**
@@ -103,11 +115,14 @@ public class Jvm extends Categories {
      * @return string the JVM locale language
      */
     public String getLanguage(Properties props) {
-
-        String language = props.getProperty("user.language");
-        language += "_";
-        language += props.getProperty("user.region");
-
+        String language = "N/A";
+        try {
+            language = props.getProperty("user.language");
+            language += "_";
+            language += props.getProperty("user.region");
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.JVM_LANGUAGE, ex.getMessage()));
+        }
         return language;
     }
 
@@ -117,7 +132,13 @@ public class Jvm extends Categories {
      * @return string the java runtime version
      */
     public String getRuntime(Properties props) {
-        return props.getProperty("java.runtime.version");
+        String value = "N/A";
+        try {
+            value = props.getProperty("java.runtime.version");
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.JVM_RUNTIME, ex.getMessage()));
+        }
+        return value;
     }
 
     /**
@@ -126,7 +147,13 @@ public class Jvm extends Categories {
      * @return string the installation directory
      */
     public String getHome(Properties props) {
-        return props.getProperty("java.home");
+        String value = "N/A";
+        try {
+            value = props.getProperty("java.home");
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.JVM_HOME, ex.getMessage()));
+        }
+        return value;
     }
 
     /**
@@ -135,7 +162,13 @@ public class Jvm extends Categories {
      * @return string the JVM implementation version
      */
     public String getVersion(Properties props) {
-        return props.getProperty("java.vm.version");
+        String value = "N/A";
+        try {
+            value = props.getProperty("java.vm.version");
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.JVM_VERSION, ex.getMessage()));
+        }
+        return value;
     }
 
     /**
@@ -143,7 +176,13 @@ public class Jvm extends Categories {
      * @param props
      * @return string the class path
      */
-    public String getmClasspath(Properties props) {
-        return props.getProperty("java.class.path");
+    public String getClasspath(Properties props) {
+        String value = "N/A";
+        try {
+            value = props.getProperty("java.class.path");
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.JVM_CLASS_PATH, ex.getMessage()));
+        }
+        return value;
     }
 }

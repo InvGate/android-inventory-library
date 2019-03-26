@@ -6,12 +6,13 @@
 [![Follow twitter](https://img.shields.io/twitter/follow/FlyveMDM.svg?style=social&label=Twitter&style=flat-square)](https://twitter.com/FlyveMDM)
 [![Telegram Group](https://img.shields.io/badge/Telegram-Group-blue.svg)](https://t.me/flyvemdm)
 [![Project Status: Active](http://www.repostatus.org/badges/latest/active.svg)](http://www.repostatus.org/#active)
+[![IRC Chat](https://img.shields.io/badge/IRC-%23flyvemdm-green.svg)](http://webchat.freenode.net/?channels=flyve-mdm)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://conventionalcommits.org)
 [![Greenkeeper badge](https://badges.greenkeeper.io/flyve-mdm/android-inventory-library.svg)](https://greenkeeper.io/)
 [![GitHub release](https://img.shields.io/github/release/flyve-mdm/android-inventory-library.svg)](https://github.com/flyve-mdm/android-inventory-library/releases)
 [![Maven Central](https://img.shields.io/maven-central/v/com.flyvemdm/inventory.svg)](https://bintray.com/flyve-mdm/inventory/android-inventory-library/)
 
-Flyve MDM is a Mobile device management software that enables you to secure and manage all the mobile devices of your business or family via a web-based console.
+Flyve MDM allows your company to maintain control of all mobile devices, whilst providing comprehensive protection and enhanced security for sensitive corporate data, via a centralized management console.
 
 To get started, check out [Flyve MDM Website](https://flyve-mdm.com/)!
 
@@ -29,31 +30,36 @@ To get started, check out [Flyve MDM Website](https://flyve-mdm.com/)!
 
 ## Synopsis
 
-This library helps you to create a complete inventory of your Android devices: both hardware and software informations are collected. You get the data about processor, memory, drives, sensors, etc., and also the list and description of installed application on any devices in a beautiful XML as protocol compatible with FusionInventory for GLPI.
+The Inventory Library for Android collects a complete inventory of your Android devices. It allows you to export your inventory in a beautiful XML or JSON as protocol compatible with FusionInventory for GLPI.
 
 You can find more information about the Inventory Protocol here:
 <http://fusioninventory.org/documentation/dev/spec/protocol/inventory.html>
 
-**What's included?**
+### Data collected
 
-* Hardware
-* Bios
-* Memory
-* Inputs
-* Sensors
-* Drives
-* Cpus
-* Simcards
-* Videos
-* Cameras
-* Networks
-* Envs
-* Jvm
-* Softwares
-* Usb
-* Battery
+- Account Info
+- Accesslog
+- Hardware
+- User
+- Storages
+- Operating System
+- BIOS
+- Memories
+- Inputs
+- Sensors
+- Drives
+- CPUs
+- Videos
+- Cameras
+- Networks
+- Environments variables
+- JVMS
+- Softwares
+- USB
+- Battery
+- Controllers
 
-Visit our [website](http://flyve.org/android-inventory-library/) for more information.
+Visit our [website](http://flyve.org/android-inventory-library/) for every element specification.
 
 ## Build Status
 

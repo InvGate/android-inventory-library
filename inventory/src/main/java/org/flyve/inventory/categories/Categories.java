@@ -1,40 +1,35 @@
 /**
+ *  LICENSE
  *
- * Copyright 2017 Teclib.
- * Copyright 2010-2016 by the FusionInventory Development
+ *  This file is part of Flyve MDM Inventory Library for Android.
+ * 
+ *  Inventory Library for Android is a subproject of Flyve MDM.
+ *  Flyve MDM is a mobile device management software.
  *
- * http://www.fusioninventory.org/
- * https://github.com/fusioninventory/fusioninventory-android
+ *  Flyve MDM is free software: you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 3
+ *  of the License, or (at your option) any later version.
  *
- * ------------------------------------------------------------------------
- *
- * LICENSE
- *
- * This file is part of FusionInventory project.
- *
- * FusionInventory is free software: you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * FusionInventory is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * ------------------------------------------------------------------------------
- * @update    07/06/2017
- * @license   GPLv2 https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * @link      https://github.com/fusioninventory/fusioninventory-android
- * @link      http://www.fusioninventory.org/
- * ------------------------------------------------------------------------------
+ *  Flyve MDM is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  ---------------------------------------------------------------------
+ *  @copyright Copyright © 2018 Teclib. All rights reserved.
+ *  @license   GPLv3 https://www.gnu.org/licenses/gpl-3.0.html
+ *  @link      https://github.com/flyve-mdm/android-inventory-library
+ *  @link      https://flyve-mdm.com
+ *  @link      http://flyve.org/android-inventory-library
+ *  ---------------------------------------------------------------------
  */
 
 package org.flyve.inventory.categories;
 
 import android.content.Context;
 
-import org.flyve.inventory.FILog;
-
+import org.flyve.inventory.CommonErrorType;
+import org.flyve.inventory.FlyveLog;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.xmlpull.v1.XmlSerializer;
@@ -100,8 +95,8 @@ public class Categories extends ArrayList<Category>{
             for( Category c : this) {
                 c.toXML(xSerializer);
             }
-        } catch (Exception e) {
-            FILog.e(e.getMessage());
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(String.valueOf(CommonErrorType.CATEGORIES_TO_XML), ex.getMessage()));
         }
     }
 
@@ -114,13 +109,12 @@ public class Categories extends ArrayList<Category>{
             for( Category c : this) {
                 c.toXMLWithoutPrivateData(xSerializer);
             }
-        } catch (Exception e) {
-            FILog.e(e.getMessage());
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(String.valueOf(CommonErrorType.CATEGORIES_TO_XML_WITHOUT_PRIVATE), ex.getMessage()));
         }
     }
 
     public void toJSON(JSONObject json) {
-
         JSONArray jsonArr = new JSONArray();
         String mType = "";
         try {
@@ -130,13 +124,12 @@ public class Categories extends ArrayList<Category>{
             }
 
             json.put(mType, jsonArr);
-        } catch (Exception e) {
-            FILog.e(e.getMessage());
+        } catch (Exception ex) {
+            FlyveLog.e(CommonErrorType.CATEGORIES_TO_JSON + " " + ex.getMessage());
         }
     }
 
     public void toJSONWithoutPrivateData(JSONObject json) {
-
         JSONArray jsonArr = new JSONArray();
         String mType = "";
         try {
@@ -146,8 +139,8 @@ public class Categories extends ArrayList<Category>{
             }
 
             json.put(mType, jsonArr);
-        } catch (Exception e) {
-            FILog.e(e.getMessage());
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(String.valueOf(CommonErrorType.CATEGORIES_TO_JSON_WITHOUT_PRIVATE), ex.getMessage()));
         }
     }
 }

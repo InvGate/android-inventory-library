@@ -1,162 +1,134 @@
 version: 2
-jobs:
-  build:
-    working_directory: ~/flyve_mdm
+reference:
+
+  ## Workspaces
+  workspace: &workspace
+    ~/flyve_mdm
+
+  ## Docker image configurations
+  android_config: &android_config
+    working_directory: *workspace
     docker:
       # Android the primary container
-      - image: circleci/android:api-26-alpha
+      - image: circleci/android:api-28-alpha
     environment:
       JVM_OPTS: -Xmx3200m
+
+  ## Cache
+  gradle_key: &gradle_key
+    jars-{{ checksum "build.gradle" }}-{{ checksum  "inventory/build.gradle" }}
+
+  restore_gradle_cache: &restore_gradle_cache
+    restore_cache:
+      key: *gradle_key
+
+  save_gradle_cache: &save_gradle_cache
+    save_cache:
+      key: *gradle_key
+      paths:
+        - ~/.gradle
+        - ~/.m2
+
+  ## Dependencies
+  ruby_dependencies: &ruby_dependencies
+    run:
+      name: Download Ruby Dependencies
+      command: bundle check || bundle install --path vendor/bundle
+
+  android_dependencies: &android_dependencies
+    run:
+      name: Download Android Dependencies
+      command: ./gradlew androidDependencies
+
+  validate_running: &validate_running
+    run:
+      name: Validate running
+      command: source ci/scripts/validate_running.sh
+
+jobs:
+  build:
+    <<: *android_config
     steps:
       - checkout
       - restore_cache:
-          key: jars-{{ checksum "build.gradle" }}-{{ checksum  "inventory/build.gradle" }}
+          key: jars-{{ checksum "build.gradle" }}-{{ checksum  "example_java/build.gradle" }}
       - run:
           name: Build
           command: ./gradlew :inventory:build
       - save_cache:
           paths:
             - ~/.gradle
-          key: jars-{{ checksum "build.gradle" }}-{{ checksum  "inventory/build.gradle" }}
-  test_api_v25:
-    working_directory: ~/flyve_mdm
-    docker:
-        - image: circleci/android:api-26-alpha
-    environment:
-      JVM_OPTS: -Xmx3200m
+          key: jars-{{ checksum "build.gradle" }}-{{ checksum  "example_java/build.gradle" }}
+
+  # Test Instrumentation with Android 4.1 JELLY_BEAN API 16
+  test_instrumentation:
+    <<: *android_config
     steps:
       - checkout
+      - *validate_running
+      - *restore_gradle_cache
+      - *ruby_dependencies
+      - *android_dependencies
+      - *save_gradle_cache
       - run:
-          name: Setup emulator
-          command: sdkmanager "system-images;android-25;google_apis;armeabi-v7a" && echo "no" | avdmanager create avd -n test -k "system-images;android-25;google_apis;armeabi-v7a"
+          name: Create debug apk
+          command: ./gradlew assembleAndroidTest assemble
       - run:
-          name: Launch emulator
-          command: export LD_LIBRARY_PATH=${ANDROID_HOME}/emulator/lib64:${ANDROID_HOME}/emulator/lib64/qt/lib && emulator64-arm -avd test -noaudio -no-boot-anim -no-window -accel on
-          background: true
-      - run:
-          name: Wait emulator
-          command: |
-            # wait for it to have booted
-            circle-android wait-for-boot
-            # unlock the emulator screen
-            sleep 30
-            adb shell input keyevent 82
-      - run:
-          name: Run Tests
-          command: ./gradlew :inventory:connectedAndroidTest
-      - store_artifacts:
-          path: inventory/build/reports
-          destination: reports
-      - store_test_results:
-          path: inventory/build/test-results
-  test_api_v16:
-      working_directory: ~/flyve_mdm
-      docker:
-          - image: circleci/android:api-26-alpha
-      environment:
-        JVM_OPTS: -Xmx3200m
-      steps:
-        - checkout
-        - run:
-            name: Setup emulator
-            command: sdkmanager "system-images;android-16;default;armeabi-v7a" && echo "no" | avdmanager create avd -n test -k "system-images;android-16;default;armeabi-v7a"
-        - run:
-            name: Launch emulator
-            command: export LD_LIBRARY_PATH=${ANDROID_HOME}/emulator/lib64:${ANDROID_HOME}/emulator/lib64/qt/lib && emulator64-arm -avd test -noaudio -no-boot-anim -no-window -accel on
-            background: true
-        - run:
-            name: Wait emulator
-            command: |
-              # wait for it to have booted
-              circle-android wait-for-boot
-              # unlock the emulator screen
-              sleep 30
-              adb shell input keyevent 82
-        - run:
-            name: Run Tests
-            command: ./gradlew :inventory:connectedAndroidTest
-        - store_artifacts:
-            path: inventory/build/reports
-            destination: reports
-        - store_test_results:
-            path: inventory/build/test-results
+          name: Run Tests on Firebase test lab
+          command: source ci/scripts/google_cloud.sh
+
   deploy_production:
-      working_directory: ~/flyve_mdm
-      docker:
-        # Android the primary container
-        - image: circleci/android:api-26-alpha
-      environment:
-        JVM_OPTS: -Xmx3200m
-      steps:
-        - checkout
-        - restore_cache:
-            key: jars-{{ checksum "build.gradle" }}-{{ checksum  "inventory/build.gradle" }}
-        - run:
-            name: Setup environment
-            command: source ci/scripts/ci_setup.sh
-        - run:
-            name: Deploy production
-            command: source ci/scripts/ci_deploy_production.sh
-        - save_cache:
-            paths:
-              - ~/.gradle
-            key: jars-{{ checksum "build.gradle" }}-{{ checksum  "inventory/build.gradle" }}
+    <<: *android_config
+    steps:
+      - checkout
+      - *restore_gradle_cache
+      - run:
+          name: Setup environment
+          command: source ci/scripts/ci_setup.sh
+      - run:
+          name: Deploy production
+          command: source ci/scripts/ci_deploy_production.sh
+      - save_cache:
+          paths:
+            - ~/.gradle
+          key: jars-{{ checksum "build.gradle" }}-{{ checksum  "inventory/build.gradle" }}
+
   documentation:
-      working_directory: ~/flyve_mdm
-      docker:
-        # Android the primary container
-        - image: circleci/android:api-26-alpha
-      environment:
-        JVM_OPTS: -Xmx3200m
-      steps:
-        - checkout
-        - restore_cache:
-            key: jars-{{ checksum "build.gradle" }}-{{ checksum  "inventory/build.gradle" }}
-        - run:
-            name: Setup environment
-            command: source ci/scripts/ci_setup.sh
-        - run:
-            name: Setup emulator
-            command: sdkmanager "system-images;android-16;default;armeabi-v7a" && echo "no" | avdmanager create avd -n test -k "system-images;android-16;default;armeabi-v7a"
-        - run:
-            name: Launch emulator
-            command: export LD_LIBRARY_PATH=${ANDROID_HOME}/emulator/lib64:${ANDROID_HOME}/emulator/lib64/qt/lib && emulator64-arm -avd test -noaudio -no-boot-anim -no-window -accel on
-            background: true
-        - run:
-            name: Wait emulator
-            command: |
-              # wait for it to have booted
-              circle-android wait-for-boot
-              # unlock the emulator screen
-              sleep 30
-              adb shell input keyevent 82
-        - run:
-            name: Documentation
-            command: source ci/scripts/ci_documentation.sh
-        - save_cache:
-            paths:
-              - ~/.gradle
-            key: jars-{{ checksum "build.gradle" }}-{{ checksum  "inventory/build.gradle" }}
+    <<: *android_config
+    steps:
+      - checkout
+      - *restore_gradle_cache
+      - run:
+          name: Setup environment
+          command: source ci/scripts/ci_setup.sh
+      - run:
+          name: Documentation
+          command: source ci/scripts/ci_documentation.sh
+      - save_cache:
+          paths:
+            - ~/.gradle
+          key: jars-{{ checksum "build.gradle" }}-{{ checksum  "inventory/build.gradle" }}
 
 workflows:
   version: 2
   build_test_and_deploy:
     jobs:
       - build
-      - test_api_v16:
+      # - test_instrumentation:
+      #     requires:
+      #       - build
+      #     filters:
+      #       branches:
+      #         ignore:
+      #           - master
+      - documentation:
           requires:
             - build
           filters:
             branches:
-              ignore:
-                - master
-      - documentation:
-          requires:
-            - test_api_v16
-          filters:
-            branches:
               only:
                 - develop
+                - master
       - deploy_production:
           requires:
             - build

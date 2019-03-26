@@ -1,40 +1,41 @@
 /**
+ *  LICENSE
  *
- * Copyright 2017 Teclib.
- * Copyright 2010-2016 by the FusionInventory Development
+ *  This file is part of Flyve MDM Inventory Library for Android.
+ * 
+ *  Inventory Library for Android is a subproject of Flyve MDM.
+ *  Flyve MDM is a mobile device management software.
  *
- * http://www.fusioninventory.org/
- * https://github.com/fusioninventory/fusioninventory-android
+ *  Flyve MDM is free software: you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 3
+ *  of the License, or (at your option) any later version.
  *
- * ------------------------------------------------------------------------
- *
- * LICENSE
- *
- * This file is part of FusionInventory project.
- *
- * FusionInventory is free software: you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * FusionInventory is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * ------------------------------------------------------------------------------
- * @update    07/06/2017
- * @license   GPLv2 https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * @link      https://github.com/fusioninventory/fusioninventory-android
- * @link      http://www.fusioninventory.org/
- * ------------------------------------------------------------------------------
+ *  Flyve MDM is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  ---------------------------------------------------------------------
+ *  @copyright Copyright © 2018 Teclib. All rights reserved.
+ *  @license   GPLv3 https://www.gnu.org/licenses/gpl-3.0.html
+ *  @link      https://github.com/flyve-mdm/android-inventory-library
+ *  @link      https://flyve-mdm.com
+ *  @link      http://flyve.org/android-inventory-library
+ *  ---------------------------------------------------------------------
  */
 
 package org.flyve.inventory.categories;
 
 import android.content.Context;
+import android.telephony.SubscriptionInfo;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 
-import org.flyve.inventory.FILog;
+import org.flyve.inventory.CommonErrorType;
+import org.flyve.inventory.FlyveLog;
+
+import java.lang.reflect.Method;
+import java.util.List;
 
 /**
  * This class get all the information of the Simcards Devices
@@ -54,6 +55,7 @@ public class Simcards extends Categories {
     private static final long serialVersionUID = -5532129156981574844L;
 
     private TelephonyManager mTM;
+    private final Context context;
 
     /**
      * Indicates whether some other object is "equal to" this one
@@ -89,28 +91,94 @@ public class Simcards extends Categories {
     public Simcards(Context xCtx) {
         super(xCtx);
 
-        try {
-            mTM = (TelephonyManager) xCtx.getSystemService(Context.TELEPHONY_SERVICE);
+        context = xCtx;
 
+        try {
             /*
              * Starting SimCards information retrieval
              */
-            if (getState().equals("SIM_STATE_READY")) {
-                Category c = new Category("SIMCARDS", "simcards");
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP_MR1) {
+                List<SubscriptionInfo> multipleSim = getMultipleSim(xCtx);
+                if (multipleSim != null && multipleSim.size() > 0) {
+                    for (SubscriptionInfo info : multipleSim) {
 
-                c.put("COUNTRY", new CategoryValue(getCountry(), "COUNTRY", "country"));
-                c.put("OPERATOR_CODE", new CategoryValue(getOperatorCode(), "OPERATOR_CODE", "operatorCode"));
-                c.put("OPERATOR_NAME", new CategoryValue(getOperatorName(), "OPERATOR_NAME", "operatorName"));
-                c.put("SERIAL", new CategoryValue(getSerial(), "SERIAL", "serial"));
-                c.put("STATE", new CategoryValue(getState(), "STATE", "state"));
-                c.put("LINE_NUMBER", new CategoryValue(getLineNumber(), "LINE_NUMBER", "lineNumber"));
-                c.put("SUBSCRIBER_ID", new CategoryValue(getSubscriberId(), "SUBSCRIBER_ID", "subscriberId"));
+                        Category c = new Category("SIMCARDS", "simcards");
 
-                this.add(c);
+                        c.put("COUNTRY", new CategoryValue(info.getCountryIso(), "COUNTRY", "country"));
+                        String operatorCode = info.getMcc() + "" + info.getMnc();
+                        c.put("OPERATOR_CODE", new CategoryValue(operatorCode, "OPERATOR_CODE", "operatorCode"));
+                        c.put("OPERATOR_NAME", new CategoryValue(info.getCarrierName().toString(), "OPERATOR_NAME", "operatorName"));
+                        c.put("SERIAL", new CategoryValue(info.getIccId(), "SERIAL", "serial"));
+                        c.put("STATE", new CategoryValue(getState(xCtx, info.getSimSlotIndex()), "STATE", "state"));
+                        c.put("LINE_NUMBER", new CategoryValue(info.getNumber(), "LINE_NUMBER", "lineNumber"));
+                        String subscriberId = String.valueOf(info.getSubscriptionId());
+                        c.put("SUBSCRIBER_ID", new CategoryValue(subscriberId, "SUBSCRIBER_ID", "subscriberId"));
+
+                        this.add(c);
+                    }
+                }
+            } else {
+                mTM = (TelephonyManager) xCtx.getSystemService(Context.TELEPHONY_SERVICE);
+                assert mTM != null;
+                if (getState(xCtx, 0).equals("SIM_STATE_READY")) {
+                    Category c = new Category("SIMCARDS", "simcards");
+
+                    c.put("COUNTRY", new CategoryValue(getCountry(), "COUNTRY", "country"));
+                    c.put("OPERATOR_CODE", new CategoryValue(getOperatorCode(), "OPERATOR_CODE", "operatorCode"));
+                    c.put("OPERATOR_NAME", new CategoryValue(getOperatorName(), "OPERATOR_NAME", "operatorName"));
+                    c.put("SERIAL", new CategoryValue(getSerial(), "SERIAL", "serial"));
+                    c.put("STATE", new CategoryValue(getState(xCtx, 0), "STATE", "state"));
+                    c.put("LINE_NUMBER", new CategoryValue(getLineNumber(), "LINE_NUMBER", "lineNumber"));
+                    c.put("SUBSCRIBER_ID", new CategoryValue(getSubscriberId(), "SUBSCRIBER_ID", "subscriberId"));
+
+                    this.add(c);
+                }
             }
         } catch (Exception ex) {
-            FILog.e(ex.getMessage());
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.SIM_CARDS, ex.getMessage()));
         }
+    }
+
+
+    /**
+     * Get list sim card
+     * @return true API >= 22
+     */
+    public List<SubscriptionInfo> getMultipleSim(Context xCtx) {
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP_MR1) {
+                SubscriptionManager subscriptionManager = (SubscriptionManager) xCtx.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
+                assert subscriptionManager != null;
+                return subscriptionManager.getActiveSubscriptionInfoList();
+            }
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.SIM_CARDS_MULTIPLE, ex.getMessage()));
+        }
+        return null;
+    }
+
+    /**
+     * Get the state Sim by slot
+     * @return string the Simcard state
+     */
+    private int getSIMStateBySlot(Context context, int slotID) {
+        TelephonyManager telephony = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+        try {
+            Class<?> telephonyClass = Class.forName(telephony.getClass().getName());
+            Class<?>[] parameter = new Class[1];
+            parameter[0] = int.class;
+            Method getSimState = telephonyClass.getMethod("getSimState", parameter);
+            Object[] obParameter = new Object[1];
+            obParameter[0] = slotID;
+            Object obPhone = getSimState.invoke(telephony, obParameter);
+            if (obPhone != null) {
+                return Integer.parseInt(obPhone.toString());
+            }
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.SIM_CARDS_STATE_BY_SLOT, ex.getMessage()));
+        }
+
+        return 0;
     }
 
     /**
@@ -118,7 +186,13 @@ public class Simcards extends Categories {
      * @return string the ISO country code
      */
     public String getCountry() {
-        return mTM.getSimCountryIso();
+        String value = "N/A";
+        try {
+            value = mTM.getSimCountryIso();
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.SIM_CARDS_COUNTRY, ex.getMessage()));
+        }
+        return value;
     }
 
     /**
@@ -126,7 +200,13 @@ public class Simcards extends Categories {
      * @return the Mobile Country Code and Mobile Network Code of the provider of the sim
      */
     public String getOperatorCode() {
-        return mTM.getSimOperator();
+        String value = "N/A";
+        try {
+            value = mTM.getSimOperator();
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.SIM_CARDS_OPERATOR_CODE, ex.getMessage()));
+        }
+        return value;
     }
 
     /**
@@ -134,7 +214,13 @@ public class Simcards extends Categories {
      * @return string the Service Provider Name
      */
     public String getOperatorName() {
-        return mTM.getSimOperatorName();
+        String value = "N/A";
+        try {
+            value = mTM.getSimOperatorName();
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.SIM_CARDS_OPERATOR_NAME, ex.getMessage()));
+        }
+        return value;
     }
 
     /**
@@ -142,37 +228,49 @@ public class Simcards extends Categories {
      * @return string the serial number
      */
     public String getSerial() {
-        return mTM.getSimSerialNumber();
+        String value = "N/A";
+        try {
+            value = mTM.getSimSerialNumber();
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.SIM_CARDS_SERIAL, ex.getMessage()));
+        }
+        return value;
     }
 
     /**
      * Get state of the Simcard
      * @return string the Simcard state
+     * @param xCtx
      */
-    public String getState() {
-        String mState = "";
-        switch(mTM.getSimState()) {
-            case TelephonyManager.SIM_STATE_ABSENT:
-                mState = "SIM_STATE_ABSENT";
-                break;
-            case TelephonyManager.SIM_STATE_NETWORK_LOCKED:
-                mState = "SIM_STATE_NETWORK_LOCKED";
-                break;
-            case TelephonyManager.SIM_STATE_PIN_REQUIRED:
-                mState = "SIM_STATE_PIN_REQUIRED";
-                break;
-            case TelephonyManager.SIM_STATE_PUK_REQUIRED:
-                mState = "SIM_STATE_PUK_REQUIRED";
-                break;
-            case TelephonyManager.SIM_STATE_READY:
-                mState = "SIM_STATE_READY";
-                break;
-            case TelephonyManager.SIM_STATE_UNKNOWN:
-                mState = "SIM_STATE_UNKNOWN";
-                break;
-            default:
-                mState = "SIM_STATE_UNKNOWN";
-                break;
+    public String getState(Context xCtx, int slotId) {
+        String mState = "N/A";
+        try {
+            int simState = mTM != null ? mTM.getSimState() : getSIMStateBySlot(xCtx, slotId);
+            switch (simState) {
+                case TelephonyManager.SIM_STATE_ABSENT:
+                    mState = "SIM_STATE_ABSENT";
+                    break;
+                case TelephonyManager.SIM_STATE_NETWORK_LOCKED:
+                    mState = "SIM_STATE_NETWORK_LOCKED";
+                    break;
+                case TelephonyManager.SIM_STATE_PIN_REQUIRED:
+                    mState = "SIM_STATE_PIN_REQUIRED";
+                    break;
+                case TelephonyManager.SIM_STATE_PUK_REQUIRED:
+                    mState = "SIM_STATE_PUK_REQUIRED";
+                    break;
+                case TelephonyManager.SIM_STATE_READY:
+                    mState = "SIM_STATE_READY";
+                    break;
+                case TelephonyManager.SIM_STATE_UNKNOWN:
+                    mState = "SIM_STATE_UNKNOWN";
+                    break;
+                default:
+                    mState = "SIM_STATE_UNKNOWN";
+                    break;
+            }
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.SIM_CARDS_STATE, ex.getMessage()));
         }
         return mState;
     }
@@ -182,7 +280,13 @@ public class Simcards extends Categories {
      * @return string the phone number for line 1
      */
     public String getLineNumber() {
-        return mTM.getLine1Number();
+        String value = "N/A";
+        try {
+            value = mTM.getLine1Number();
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.SIM_CARDS_LINE_NUMBER, ex.getMessage()));
+        }
+        return value;
     }
 
     /**
@@ -190,6 +294,12 @@ public class Simcards extends Categories {
      * @return string the unique subscriber ID
      */
     public String getSubscriberId() {
-        return mTM.getSubscriberId();
+        String value = "N/A";
+        try {
+            value = mTM.getSubscriberId();
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.SIM_CARDS_SUBSCRIBER_ID, ex.getMessage()));
+        }
+        return value;
     }
 }

@@ -1,42 +1,40 @@
 /**
- * FusionInventory
+ *  LICENSE
  *
- * Copyright (C) 2010-2017 by the FusionInventory Development Team.
+ *  This file is part of Flyve MDM Inventory Library for Android.
+ * 
+ *  Inventory Library for Android is a subproject of Flyve MDM.
+ *  Flyve MDM is a mobile device management software.
  *
- * http://www.fusioninventory.org/
- * https://github.com/fusioninventory/fusioninventory-android
+ *  Flyve MDM is free software: you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 3
+ *  of the License, or (at your option) any later version.
  *
- * ------------------------------------------------------------------------
- *
- * LICENSE
- *
- * This file is part of FusionInventory project.
- *
- * FusionInventory is free software: you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * FusionInventory is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * ------------------------------------------------------------------------------
- * @update    07/06/2017
- * @license   GPLv2 https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * @link      https://github.com/fusioninventory/fusioninventory-android
- * @link      http://www.fusioninventory.org/
- * ------------------------------------------------------------------------------
+ *  Flyve MDM is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  ---------------------------------------------------------------------
+ *  @copyright Copyright © 2018 Teclib. All rights reserved.
+ *  @license   GPLv3 https://www.gnu.org/licenses/gpl-3.0.html
+ *  @link      https://github.com/flyve-mdm/android-inventory-library
+ *  @link      https://flyve-mdm.com
+ *  @link      http://flyve.org/android-inventory-library
+ *  ---------------------------------------------------------------------
  */
 
 package org.flyve.inventory.categories;
 
 import android.os.Build;
 
-import org.flyve.inventory.FILog;
+import org.flyve.inventory.CommonErrorType;
+import org.flyve.inventory.FlyveLog;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.xmlpull.v1.XmlSerializer;
 
+import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -120,8 +118,19 @@ public class Category extends LinkedHashMap<String, CategoryValue> {
      */
     public CategoryValue put(String key, CategoryValue value) {
        //Do not add value if it's null, blank or "unknow"
-       if (value != null && !value.getValue().equals("") && !value.getValue().equals(Build.UNKNOWN)) {
-    	   return super.put(key, value);
+       if (value != null) {
+           if (value.getCategory() == null) {
+               String s = value.getValue();
+               if (s != null && !s.equals("") && !s.equals(Build.UNKNOWN)){
+                   return super.put(key, value);
+               } else if (value.getValues() != null && value.getValues().size() > 0) {
+                   return super.put(key, value);
+               } else {
+                   return null;
+               }
+           } else {
+               return super.put(key, value);
+           }
        } else {
     	   return null;
        }
@@ -134,24 +143,13 @@ public class Category extends LinkedHashMap<String, CategoryValue> {
     public void toXML(XmlSerializer serializer) {
         try {
             serializer.startTag(null, mType);
-
             for (Map.Entry<String, CategoryValue> entry : this.entrySet()) {
-                serializer.startTag(null, this.get(entry.getKey()).getXmlName());
-
-                String value;
-                if(this.get(entry.getKey()).hasCDATA()) {
-                    value = "<![CDATA[" + String.valueOf(this.get(entry.getKey()).getValue()) + "]]>";
-                } else {
-                    value = String.valueOf(this.get(entry.getKey()).getValue());
-                }
-
-                serializer.text(value);
-                serializer.endTag(null, this.get(entry.getKey()).getXmlName());
+                setXMLValues(serializer, entry);
             }
 
             serializer.endTag(null, mType);
         } catch (Exception ex) {
-            FILog.d(ex.getMessage());
+            FlyveLog.e(FlyveLog.getMessage(String.valueOf(CommonErrorType.CATEGORY_TO_XML), ex.getMessage()));
         }
     }
 
@@ -161,16 +159,61 @@ public class Category extends LinkedHashMap<String, CategoryValue> {
 
             for (Map.Entry<String, CategoryValue> entry : this.entrySet()) {
                 if(!this.get(entry.getKey()).isPrivate()) {
-                    serializer.startTag(null, this.get(entry.getKey()).getXmlName());
-                    serializer.text(String.valueOf(this.get(entry.getKey()).getValue()));
-                    serializer.endTag(null, this.get(entry.getKey()).getXmlName());
+                    setXMLValues(serializer, entry);
                 }
             }
 
             serializer.endTag(null, mType);
         } catch (Exception ex) {
-            FILog.d(ex.getMessage());
+            FlyveLog.e(FlyveLog.getMessage(String.valueOf(CommonErrorType.CATEGORY_TO_XML_WITHOUT_PRIVATE), ex.getMessage()));
         }
+    }
+
+    private void setXMLValues(XmlSerializer serializer, Entry<String, CategoryValue> entry) throws IOException {
+        CategoryValue categoryValue = this.get(entry.getKey());
+        if (categoryValue.getCategory() == null) {
+            /* If is a normal value */
+            if (categoryValue.getValues() == null || categoryValue.getValues().size() <= 0) {
+                String xmlName = categoryValue.getXmlName();
+                String value = categoryValue.getValue();
+                Boolean hasCDATA = categoryValue.hasCDATA();
+                setChildXMLValue(serializer, xmlName, value, hasCDATA);
+            /* If is a list of values */
+            } else {
+                for (String value : categoryValue.getValues()) {
+                    String xmlName = categoryValue.getXmlName();
+                    Boolean hasCDATA = categoryValue.hasCDATA();
+                    setChildXMLValue(serializer, xmlName, value, hasCDATA);
+                }
+            }
+        /* If is a Category embed */
+        } else {
+            Category category = categoryValue.getCategory();
+            serializer.startTag(null, category.getType());
+            if (categoryValue.getValues() != null && categoryValue.getValues().size() > 0) {
+                for (Entry<String, CategoryValue> entries : category.entrySet()) {
+                    String xmlName = entries.getKey();
+                    for (String value : category.get(xmlName).getValues()) {
+                        setChildXMLValue(serializer, xmlName, value, false);
+                    }
+                }
+            } else {
+                for (Entry<String, CategoryValue> entries : category.entrySet()) {
+                    String xmlName = entries.getKey();
+                    String value = category.get(xmlName).getValue();
+                    setChildXMLValue(serializer, xmlName, value, false);
+                }
+            }
+            serializer.endTag(null, category.getType());
+        }
+    }
+
+    private void setChildXMLValue(XmlSerializer serializer, String xmlName, String xmlValue, boolean hasCData) throws IOException {
+        serializer.startTag(null, xmlName);
+        String textValue;
+        textValue = hasCData ? "<![CDATA[" + String.valueOf(xmlValue) + "]]>" : String.valueOf(xmlValue);
+        serializer.text(textValue);
+        serializer.endTag(null, xmlName);
     }
 
     /**
@@ -180,12 +223,12 @@ public class Category extends LinkedHashMap<String, CategoryValue> {
         try {
             JSONObject jsonCategories = new JSONObject();
             for (Map.Entry<String,CategoryValue> entry : this.entrySet()) {
-                jsonCategories.put(this.get(entry.getKey()).getJsonName(), this.get(entry.getKey()).getValue());
+                setJSONValues(jsonCategories, entry);
             }
 
             return jsonCategories;
         } catch ( Exception ex ) {
-            FILog.e( ex.getMessage() );
+            FlyveLog.e(FlyveLog.getMessage(String.valueOf(CommonErrorType.CATEGORY_TO_JSON), ex.getMessage()));
             return new JSONObject();
         }
     }
@@ -195,14 +238,36 @@ public class Category extends LinkedHashMap<String, CategoryValue> {
             JSONObject jsonCategories = new JSONObject();
             for (Map.Entry<String,CategoryValue> entry : this.entrySet()) {
                 if(!this.get(entry.getKey()).isPrivate()) {
-                    jsonCategories.put(this.get(entry.getKey()).getJsonName(), this.get(entry.getKey()).getValue());
+                    setJSONValues(jsonCategories, entry);
                 }
             }
 
             return jsonCategories;
         } catch ( Exception ex ) {
-            FILog.e( ex.getMessage() );
+            FlyveLog.e(FlyveLog.getMessage(String.valueOf(CommonErrorType.CATEGORY_TO_JSON_WITHOUT_PRIVATE), ex.getMessage()));
             return new JSONObject();
+        }
+    }
+
+    private void setJSONValues(JSONObject jsonCategories, Entry<String, CategoryValue> entry) throws JSONException {
+        CategoryValue categoryValue = this.get(entry.getKey());
+        if (entry.getValue().getCategory() == null) {
+            if (entry.getValue().getValues() == null) {
+                jsonCategories.put(categoryValue.getJsonName(), categoryValue.getValue());
+            } else {
+                jsonCategories.put(categoryValue.getJsonName(), categoryValue.getValues());
+            }
+        } else {
+            Category category = categoryValue.getCategory();
+            JSONObject newCategory = new JSONObject();
+            for (CategoryValue value : category.values()) {
+                if (entry.getValue().getValues() == null) {
+                    newCategory.put(value.getJsonName(), value.getValue());
+                } else {
+                    newCategory.put(value.getJsonName(), value.getValues());
+                }
+            }
+            jsonCategories.put(category.getType(), newCategory);
         }
     }
 }

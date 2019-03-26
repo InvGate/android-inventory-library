@@ -1,6 +1,6 @@
 {
   "name": "@teclib/android-inventory-library",
-  "version": "0.8.6",
+  "version": "1.0.0",
   "description": "Flyve MDM Inventory Library for Android",
   "main": "index.js",
   "scripts": {
@@ -18,7 +18,7 @@
     "agent",
     "teclib"
   ],
-  "author": "Rafael Hernandez <rhernandez@teclib.com> (https://flyve-mdm.com)",
+  "author": "Ivan Del Pino <idelpino@teclib.com> (https://flyve-mdm.com)",
   "license": "GPL-3.0",
   "bugs": {
     "url": "https://github.com/flyve-mdm/android-inventory-library/issues"
@@ -26,7 +26,7 @@
   "homepage": "https://github.com/flyve-mdm/android-inventory-library#readme",
   "devDependencies": {
     "conventional-github-releaser": "^3.1.2",
-    "gh-pages": "^1.2.0",
+    "gh-pages": "^2.0.0",
     "node-github-release": "^0.1.1",
     "standard-version": "^4.2.0"
   }

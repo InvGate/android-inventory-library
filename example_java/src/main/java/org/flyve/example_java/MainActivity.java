@@ -1,3 +1,29 @@
+/**
+ *  LICENSE
+ *
+ *  This file is part of Flyve MDM Inventory Library for Android.
+ * 
+ *  Inventory Library for Android is a subproject of Flyve MDM.
+ *  Flyve MDM is a mobile device management software.
+ *
+ *  Flyve MDM is free software: you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 3
+ *  of the License, or (at your option) any later version.
+ *
+ *  Flyve MDM is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  ---------------------------------------------------------------------
+ *  @copyright Copyright © 2018 Teclib. All rights reserved.
+ *  @license   GPLv3 https://www.gnu.org/licenses/gpl-3.0.html
+ *  @link      https://github.com/flyve-mdm/android-inventory-library
+ *  @link      https://flyve-mdm.com
+ *  @link      http://flyve.org/android-inventory-library
+ *  ---------------------------------------------------------------------
+ */
+
 package org.flyve.example_java;
 
 import android.Manifest;
@@ -51,11 +77,8 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onTaskSuccess(String data) {
                         Log.d(TAG, data);
-                        //inventoryTask.shareInventory( 2);
-
                         try {
-                            String base64 = data;
-                            getSyncWebData("http://10.0.0.6:8000/1e6dwka1", base64, null);
+                            getSyncWebData("http://10.0.0.6:8000/1e6dwka1", data, null);
                         } catch (Exception ex) {
                             Log.e(TAG, ex.getMessage());
                         }
@@ -66,6 +89,17 @@ public class MainActivity extends AppCompatActivity {
                     public void onTaskError(Throwable error) {
                         Log.e(TAG, error.getMessage());
                         Toast.makeText(MainActivity.this, "Inventory fail, check the log", Toast.LENGTH_SHORT).show();
+                    }
+                });
+                inventoryTask.getJSON(new InventoryTask.OnTaskCompleted() {
+                    @Override
+                    public void onTaskSuccess(String data) {
+                        Log.d(TAG, data);
+                    }
+
+                    @Override
+                    public void onTaskError(Throwable error) {
+                        Toast.makeText(MainActivity.this, "Error", Toast.LENGTH_SHORT).show();
                     }
                 });
             }

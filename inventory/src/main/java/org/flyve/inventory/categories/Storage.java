@@ -1,42 +1,37 @@
 /**
+ *  LICENSE
  *
- * Copyright 2017 Teclib.
- * Copyright 2010-2016 by the FusionInventory Development
+ *  This file is part of Flyve MDM Inventory Library for Android.
+ * 
+ *  Inventory Library for Android is a subproject of Flyve MDM.
+ *  Flyve MDM is a mobile device management software.
  *
- * http://www.fusioninventory.org/
- * https://github.com/fusioninventory/fusioninventory-android
+ *  Flyve MDM is free software: you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 3
+ *  of the License, or (at your option) any later version.
  *
- * ------------------------------------------------------------------------
- *
- * LICENSE
- *
- * This file is part of FusionInventory project.
- *
- * FusionInventory is free software: you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * FusionInventory is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * ------------------------------------------------------------------------------
- * @update    07/06/2017
- * @license   GPLv2 https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * @link      https://github.com/fusioninventory/fusioninventory-android
- * @link      http://www.fusioninventory.org/
- * ------------------------------------------------------------------------------
+ *  Flyve MDM is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  ---------------------------------------------------------------------
+ *  @copyright Copyright © 2018 Teclib. All rights reserved.
+ *  @license   GPLv3 https://www.gnu.org/licenses/gpl-3.0.html
+ *  @link      https://github.com/flyve-mdm/android-inventory-library
+ *  @link      https://flyve-mdm.com
+ *  @link      http://flyve.org/android-inventory-library
+ *  ---------------------------------------------------------------------
  */
 
 package org.flyve.inventory.categories;
 
 import android.content.Context;
 
-import org.flyve.inventory.FILog;
+import org.flyve.inventory.CommonErrorType;
+import org.flyve.inventory.FlyveLog;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
@@ -60,7 +55,7 @@ public class Storage extends Categories {
     private static final long serialVersionUID = 3528873342443549732L;
 
     private Properties props;
-    private Context xCtx;
+    private Context context;
 
     /**
      * Indicates whether some other object is "equal to" this one
@@ -85,7 +80,7 @@ public class Storage extends Categories {
     @Override
     public int hashCode() {
         int hash = super.hashCode();
-        hash = 89 * hash + (this.xCtx != null ? this.xCtx.hashCode() : 0);
+        hash = 89 * hash + (this.context != null ? this.context.hashCode() : 0);
         hash = 89 * hash + (this.props != null ? this.props.hashCode() : 0);
         return hash;
     }
@@ -97,7 +92,7 @@ public class Storage extends Categories {
     public Storage(Context xCtx) {
         super(xCtx);
 
-        this.xCtx = xCtx;
+        this.context = xCtx;
 
         try {
             props = System.getProperties();
@@ -119,7 +114,7 @@ public class Storage extends Categories {
                 }
             }
         } catch (Exception ex) {
-            FILog.e(ex.getMessage());
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.STORAGE, ex.getMessage()));
         }
     }
 
@@ -142,8 +137,8 @@ public class Storage extends Categories {
             }
 
             return values;
-        } catch (IOException ex) {
-            FILog.e(ex.getMessage());
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.STORAGE_PARTITION, ex.getMessage()));
         }
 
         return null;
@@ -152,13 +147,17 @@ public class Storage extends Categories {
     private List<String> getValues(String line) {
         ArrayList<String> arr = new ArrayList<>();
 
-        if(!line.trim().equals("")) {
-            String[] arrLine = line.split(" ");
-            for (int i = 0; i < arrLine.length; i++) {
-                if (!arrLine[i].trim().equals("")) {
-                    arr.add(arrLine[i]);
+        try {
+            if (!line.trim().equals("")) {
+                String[] arrLine = line.split(" ");
+                for (String anArrLine : arrLine) {
+                    if (!anArrLine.trim().equals("")) {
+                        arr.add(anArrLine);
+                    }
                 }
             }
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.STORAGE_VALUES, ex.getMessage()));
         }
 
         return arr;

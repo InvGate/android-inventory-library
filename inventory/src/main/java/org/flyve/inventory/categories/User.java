@@ -1,32 +1,27 @@
 /**
+ *  LICENSE
  *
- * Copyright 2017 Teclib.
- * Copyright 2010-2016 by the FusionInventory Development
+ *  This file is part of Flyve MDM Inventory Library for Android.
+ * 
+ *  Inventory Library for Android is a subproject of Flyve MDM.
+ *  Flyve MDM is a mobile device management software.
  *
- * http://www.fusioninventory.org/
- * https://github.com/fusioninventory/fusioninventory-android
+ *  Flyve MDM is free software: you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 3
+ *  of the License, or (at your option) any later version.
  *
- * ------------------------------------------------------------------------
- *
- * LICENSE
- *
- * This file is part of FusionInventory project.
- *
- * FusionInventory is free software: you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * FusionInventory is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * ------------------------------------------------------------------------------
- * @update    07/06/2017
- * @license   GPLv2 https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * @link      https://github.com/fusioninventory/fusioninventory-android
- * @link      http://www.fusioninventory.org/
- * ------------------------------------------------------------------------------
+ *  Flyve MDM is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  ---------------------------------------------------------------------
+ *  @copyright Copyright © 2018 Teclib. All rights reserved.
+ *  @license   GPLv3 https://www.gnu.org/licenses/gpl-3.0.html
+ *  @link      https://github.com/flyve-mdm/android-inventory-library
+ *  @link      https://flyve-mdm.com
+ *  @link      http://flyve.org/android-inventory-library
+ *  ---------------------------------------------------------------------
  */
 
 package org.flyve.inventory.categories;
@@ -35,7 +30,8 @@ import android.content.Context;
 import android.os.Build;
 import android.os.UserManager;
 
-import org.flyve.inventory.FILog;
+import org.flyve.inventory.CommonErrorType;
+import org.flyve.inventory.FlyveLog;
 
 import java.util.Properties;
 
@@ -57,7 +53,7 @@ public class User extends Categories {
     private static final long serialVersionUID = 3528873342443549732L;
 
     private Properties props;
-    private Context xCtx;
+    private Context context;
 
     /**
      * Indicates whether some other object is "equal to" this one
@@ -82,7 +78,7 @@ public class User extends Categories {
     @Override
     public int hashCode() {
         int hash = super.hashCode();
-        hash = 89 * hash + (this.xCtx != null ? this.xCtx.hashCode() : 0);
+        hash = 89 * hash + (this.context != null ? this.context.hashCode() : 0);
         hash = 89 * hash + (this.props != null ? this.props.hashCode() : 0);
         return hash;
     }
@@ -94,17 +90,17 @@ public class User extends Categories {
     public User(Context xCtx) {
         super(xCtx);
 
-        this.xCtx = xCtx;
+        this.context = xCtx;
 
         try {
             props = System.getProperties();
 
             Category c = new Category("USER", "user");
-            c.put("LOGIN", new CategoryValue(userName(), "LOGIN", "login"));
+            c.put("LOGIN", new CategoryValue(getUserName(), "LOGIN", "login"));
 
             this.add(c);
         } catch (Exception ex) {
-            FILog.e(ex.getMessage());
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.USER, ex.getMessage()));
         }
 
     }
@@ -112,23 +108,27 @@ public class User extends Categories {
     /**
      * Get the user name
      */
-    public String userName() {
-        String userName;
-        if(Build.VERSION.SDK_INT >= 17) {
-            UserManager userMgr = (UserManager) xCtx.getSystemService(Context.USER_SERVICE);
-            if (userMgr != null) {
-                try {
-                    // validate permission exception
-                    userName = userMgr.getUserName();
-                } catch (Exception ex) {
-                    FILog.e(ex.getMessage());
+    public String getUserName() {
+        String userName = "N/A";
+        try {
+            if (Build.VERSION.SDK_INT >= 17) {
+                UserManager userMgr = (UserManager) context.getSystemService(Context.USER_SERVICE);
+                if (userMgr != null) {
+                    try {
+                        // validate permission exception
+                        userName = userMgr.getUserName();
+                    } catch (Exception ex) {
+                        FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.USER_NAME, ex.getMessage()));
+                        userName = Build.USER;
+                    }
+                } else {
                     userName = Build.USER;
                 }
             } else {
                 userName = Build.USER;
             }
-        } else {
-            userName = Build.USER;
+        } catch (Exception ex) {
+            FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.USER_NAME, ex.getMessage()));
         }
 
         return userName;

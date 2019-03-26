@@ -1,33 +1,27 @@
 /**
- * FILog
+ *  LICENSE
  *
- * Copyright 2017 Teclib.
- * Copyright 2010-2016 by the FusionInventory Development
+ *  This file is part of Flyve MDM Inventory Library for Android.
+ * 
+ *  Inventory Library for Android is a subproject of Flyve MDM.
+ *  Flyve MDM is a mobile device management software.
  *
- * http://www.fusioninventory.org/
- * https://github.com/fusioninventory/fusioninventory-android
+ *  Flyve MDM is free software: you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 3
+ *  of the License, or (at your option) any later version.
  *
- * ------------------------------------------------------------------------
- *
- * LICENSE
- *
- * This file is part of FusionInventory project.
- *
- * FusionInventory is free software: you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * FusionInventory is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * ------------------------------------------------------------------------------
- * @update    07/06/2017
- * @license   GPLv2 https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * @link      https://github.com/fusioninventory/fusioninventory-android
- * @link      http://www.fusioninventory.org/
- * ------------------------------------------------------------------------------
+ *  Flyve MDM is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  ---------------------------------------------------------------------
+ *  @copyright Copyright © 2018 Teclib. All rights reserved.
+ *  @license   GPLv3 https://www.gnu.org/licenses/gpl-3.0.html
+ *  @link      https://github.com/flyve-mdm/android-inventory-library
+ *  @link      https://flyve-mdm.com
+ *  @link      http://flyve.org/android-inventory-library
+ *  ---------------------------------------------------------------------
  */
 
 package org.flyve.inventory;
@@ -56,6 +50,10 @@ import java.util.ArrayList;
  */
 public class InventoryTask {
 
+    /**
+     * Set if show FlyveLog in console
+     */
+    public static boolean showFILog = false;
     private static Handler uiHandler;
 
     private Boolean running = false;
@@ -69,6 +67,7 @@ public class InventoryTask {
     }
 
     private Context ctx = null;
+    private String[] categories;
     private String appVersion = "";
     private String fileNameXML = "Inventory.xml";
     private String fileNameJSON = "Inventory.json";
@@ -85,29 +84,41 @@ public class InventoryTask {
      * @param context The context to be use
      * @param appVersion The name of the agent
      */
-    public InventoryTask(Context context, String appVersion) {
-        this.appVersion = appVersion;
-        ctx = context;
-
-        try {
-            FormatStrategy formatStrategy = PrettyFormatStrategy.newBuilder()
-                    .build();
-            Logger.addLogAdapter(new AndroidLogAdapter(formatStrategy));
-        } catch (Exception ex) {
-            ex.getStackTrace();
-        }
+    public InventoryTask(Context context, String appVersion, Boolean storeResult) {
+        this(storeResult);
+        startInventory(context, appVersion);
     }
 
     /**
      * This constructor return a Success XML or Error on asynchronous way
      * @param context The context to be use
      * @param appVersion The name of the agent
+     */
+    public InventoryTask(Context context, String appVersion, Boolean storeResult, String[] categories) {
+        this(storeResult);
+        this.categories = categories;
+        startInventory(context, appVersion);
+    }
+
+    /**
+     * This constructor return a Success XML or Error on asynchronous way
      * @param storeResult Indicate is the result will be stored on file
      */
-    public InventoryTask(Context context, String appVersion, Boolean storeResult) {
-        this.appVersion = appVersion;
+    private InventoryTask(Boolean storeResult) {
         this.storeResult = storeResult;
-        ctx = context;
+    }
+
+    private void startInventory(Context context, String appVersion) {
+        this.appVersion = appVersion;
+        this.ctx = context;
+        try {
+            if (showFILog) {
+                FormatStrategy formatStrategy = PrettyFormatStrategy.newBuilder().build();
+                Logger.addLogAdapter(new AndroidLogAdapter(formatStrategy));
+            }
+        } catch (Exception ex) {
+            ex.getStackTrace();
+        }
     }
 
     /**
@@ -118,9 +129,40 @@ public class InventoryTask {
     private ArrayList<Categories> loadCategoriesClass() throws FlyveException {
 
         ArrayList<Categories> mContent = new ArrayList<Categories>();
+        String[] categories = this.categories == null ? getCategories() : this.categories;
 
-        String[] categories = {
-//                "PhoneStatus",
+        Class<Categories> catClass;
+
+        for(String c : categories) {
+            FlyveLog.v(String.format("new INVENTORY of %s", c));
+
+            // Loading the class with name of the ArrayList
+            try {
+                Class cCat = Class.forName(String.format("org.flyve.inventory.categories.%s", c));
+                catClass = (Class<Categories>)cCat;
+
+            }
+            catch (Exception ex) {
+                FlyveLog.e( ex.getCause().toString() );
+                throw new FlyveException(ex.getMessage(), ex.getCause());
+            }
+
+            // Instance the class and checking errors
+            if(catClass!=null) {
+                try {
+                    Constructor<Categories> co = catClass.getConstructor(Context.class);
+                    mContent.add(co.newInstance(ctx));
+                } catch ( Exception ex ) {
+                    FlyveLog.e( ex.getCause().toString() );
+                    throw new FlyveException(ex.getMessage(), ex.getCause());
+                }
+            }
+        }
+        return mContent;
+    }
+
+    public String[] getCategories() {
+        return new String[]{
                 "Hardware",
                 "User",
                 "Storage",
@@ -135,42 +177,14 @@ public class InventoryTask {
                 "Videos",
                 "Cameras",
                 "Networks",
-//                "LocationProviders",
                 "Envs",
                 "Jvm",
                 "Software",
                 "Usb",
-                "Battery"
+                "Battery",
+                "Controllers",
+                "Modems"
         };
-
-        Class<Categories> catClass = null;
-
-        for(String c : categories) {
-            FILog.v(String.format("new INVENTORY of %s", c));
-
-            // Loading the class with name of the ArrayList
-            try {
-                Class cCat = Class.forName(String.format("org.flyve.inventory.categories.%s", c));
-                catClass = (Class<Categories>)cCat;
-
-            }
-            catch (Exception ex) {
-                FILog.e( ex.getCause().toString() );
-                throw new FlyveException(ex.getMessage(), ex.getCause());
-            }
-
-            // Instance the class and checking errors
-            if(catClass!=null) {
-                try {
-                    Constructor<Categories> co = catClass.getConstructor(Context.class);
-                    mContent.add(co.newInstance(ctx));
-                } catch ( Exception ex ) {
-                    FILog.e( ex.getCause().toString() );
-                    throw new FlyveException(ex.getMessage(), ex.getCause());
-                }
-            }
-        }
-        return mContent;
     }
 
     public void setTag(String tag) {
@@ -223,7 +237,9 @@ public class InventoryTask {
                     InventoryTask.runOnUI(new Runnable() {
                         public void run() {
                             running = false;
-                            listener.onTaskError( ex.getCause() );
+                            if (ex.getCause() != null) {
+                                listener.onTaskError(ex.getCause());
+                            }
                         }
                     });
 
@@ -262,7 +278,9 @@ public class InventoryTask {
                     InventoryTask.runOnUI(new Runnable() {
                         public void run() {
                             running = false;
-                            listener.onTaskError( ex.getCause() );
+                            if (ex.getCause() != null) {
+                                listener.onTaskError(ex.getCause());
+                            }
                         }
                     });
                 }
