@@ -268,6 +268,7 @@ public class OperatingSystem extends Categories {
 
     private static enum SDK{
 
+
         SDK1("","1.0"),
         SDK2(NameOS.PETIT_FOUR,"1.1"),
         SDK3(NameOS.CUPCAKE,"1.5"),
@@ -294,7 +295,9 @@ public class OperatingSystem extends Categories {
         SDK24(NameOS.NOUGAT,"7.0"),
         SDK25(NameOS.NOUGAT,"7.1.1"),
         SDK26(NameOS.OREO,"8.0"),
-        SDK27(NameOS.OREO,"8.1");
+        SDK27(NameOS.OREO,"8.1"),
+        SDK28(NameOS.PIE,"9.0"),
+        SDK29(NameOS.Q,"10.0");
 
         private final String name;
         private final String version;
@@ -329,6 +332,8 @@ public class OperatingSystem extends Categories {
             public static final String MARSHMALLOW="Marshmallow";
             public static final String NOUGAT="Nougat";
             public static final String OREO="Oreo";
+            public static final String PIE="Pie";
+            public static final String Q="Q";
         }
 
     }
