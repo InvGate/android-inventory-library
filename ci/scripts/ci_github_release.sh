@@ -26,6 +26,7 @@
 #
 
 GIT_TAG=$(jq -r ".version" package.json)
+export GITHUB_TOKEN=$GH_TOKEN
 
 # push tag to github
 yarn conventional-github-releaser -p angular -t $GH_TOKEN 2> /dev/null || true

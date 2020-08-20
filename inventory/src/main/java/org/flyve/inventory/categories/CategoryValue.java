@@ -66,7 +66,7 @@ public class CategoryValue {
         this.jsonName = jsonName;
         this.xmlName = xmlName;
         this.isPrivate = false;
-        this.hasCDATA = false;
+        this.hasCDATA = true;
     }
 
     public CategoryValue(String value, String xmlName, String jsonName, Boolean isPrivate, Boolean hasCDATA) {
@@ -123,7 +123,7 @@ public class CategoryValue {
         this.jsonName = jsonName;
         this.xmlName = xmlName;
         this.isPrivate = false;
-        this.hasCDATA = false;
+        this.hasCDATA = true;
     }
 
     /** Embed an category inside in another category
@@ -139,6 +139,10 @@ public class CategoryValue {
 
     public String getValue() {
         return value;
+    }
+
+    public void setValue(String newValue) {
+        this.value = newValue;
     }
 
     public String getJsonName() {

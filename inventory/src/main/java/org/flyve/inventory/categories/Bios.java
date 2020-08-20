@@ -26,11 +26,16 @@
 
 package org.flyve.inventory.categories;
 
+import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.os.Build;
+import android.support.v4.content.ContextCompat;
 
 import org.flyve.inventory.CommonErrorType;
-import org.flyve.inventory.FlyveLog;
+import org.flyve.inventory.InventoryLog;
 import org.flyve.inventory.Utils;
 
 import java.io.BufferedReader;
@@ -38,6 +43,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.util.UUID;
 
 /**
  * This class get all the information of the Bios
@@ -56,6 +62,7 @@ public class Bios extends Categories {
 	 */
 	private static final long serialVersionUID = -559572118090134691L;
 	private static final String CPUINFO = "/proc/cpuinfo";
+	private static final String PREF_UNIQUE_ID = "PREF_UNIQUE_ID";
 	private final Context context;
 
 	// <!ELEMENT BIOS (SMODEL, SMANUFACTURER, SSN, BDATE, BVERSION,
@@ -88,7 +95,7 @@ public class Bios extends Categories {
 
 			this.add(c);
 		} catch (Exception ex) {
-			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.BIOS, ex.getMessage()));
+			InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.BIOS, ex.getMessage()));
 		}
 	}
 
@@ -101,7 +108,7 @@ public class Bios extends Categories {
 		try {
 			dateInfo = Utils.getCatInfo("/sys/devices/virtual/dmi/id/bios_date");
 		} catch (Exception ex) {
-			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.BIOS_DATE, ex.getMessage()));
+			InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.BIOS_DATE, ex.getMessage()));
 		}
 		return !dateInfo.equals("") ? dateInfo : "N/A";
 	}
@@ -115,7 +122,7 @@ public class Bios extends Categories {
 		try {
 			manufacturer= Build.MANUFACTURER;
 		} catch (Exception ex) {
-			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.BIOS_MANUFACTURER, ex.getMessage()));
+			InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.BIOS_MANUFACTURER, ex.getMessage()));
 		}
 		return manufacturer;
 	}
@@ -129,7 +136,7 @@ public class Bios extends Categories {
 		try {
 			dateInfo = Utils.getCatInfo("/sys/devices/virtual/dmi/id/bios_version");
 		} catch (Exception ex) {
-			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.BIOS_VERSION, ex.getMessage()));
+			InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.BIOS_VERSION, ex.getMessage()));
 		}
 		return !dateInfo.equals("") ? dateInfo : "N/A";
 	}
@@ -143,7 +150,7 @@ public class Bios extends Categories {
 		try {
 			manufacturer = Build.MANUFACTURER;
 		} catch (Exception ex) {
-			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.BIOS_BOARD_MANUFACTURER, ex.getMessage()));
+			InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.BIOS_BOARD_MANUFACTURER, ex.getMessage()));
 		}
 		return manufacturer;
 	}
@@ -157,7 +164,7 @@ public class Bios extends Categories {
 		try {
 			model = Build.MODEL;
 		} catch (Exception ex) {
-			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.BIOS_MOTHER_BOARD_MODEL, ex.getMessage()));
+			InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.BIOS_MOTHER_BOARD_MODEL, ex.getMessage()));
 		}
 		return model;
 	}
@@ -171,7 +178,7 @@ public class Bios extends Categories {
 		try {
 			tags = Build.TAGS;
 		} catch (Exception ex) {
-			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.BIOS_TAG, ex.getMessage()));
+			InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.BIOS_TAG, ex.getMessage()));
 		}
 		return tags;
 	}
@@ -185,15 +192,39 @@ public class Bios extends Categories {
 		try {
 			dateInfo = Utils.getCatInfo("/sys/devices/virtual/dmi/id/board_serial");
 		} catch (Exception ex) {
-			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.BIOS_MOTHER_BOARD_SERIAL, ex.getMessage()));
+			InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.BIOS_MOTHER_BOARD_SERIAL, ex.getMessage()));
 		}
 		return !dateInfo.equals("") ? dateInfo : "N/A";
 	}
+
+
+	/**
+	 * Get the System Unique Identifier
+	 * @return string with Unique Identifier
+	 */
+	public String getSystemUniqueID() {
+		String uniqueID;
+
+		SharedPreferences sharedPrefs = context.getSharedPreferences(
+				PREF_UNIQUE_ID, Context.MODE_PRIVATE);
+		uniqueID = sharedPrefs.getString(PREF_UNIQUE_ID, null);
+		if (uniqueID == null) {
+			uniqueID = UUID.randomUUID().toString().replace("-", "");
+			SharedPreferences.Editor editor = sharedPrefs.edit();
+			editor.putString(PREF_UNIQUE_ID, uniqueID);
+			editor.apply();
+		}
+
+		return uniqueID;
+
+	}
+
 
 	/**
 	 * Get the System serial number
 	 * @return string with the serial number
 	 */
+	@SuppressLint("HardwareIds")
 	public String getSystemSerialNumber() {
 		String systemSerialNumber = "Unknown";
 		try {
@@ -204,19 +235,23 @@ public class Bios extends Categories {
 			//Versions < Android 7 get bad serial with Build.SERIAL
 			serial = getSerialFromPrivateAPI();
 
-			if (systemSerialNumber.equals("")) {
-				if (!Build.SERIAL.equals(Build.UNKNOWN)) {
+
+			//Second, try to get serial number from regular API!
+			if (serial.equals("")) {
+				if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+						ContextCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE)
+							== PackageManager.PERMISSION_GRANTED) {
+					serial = android.os.Build.getSerial();
+				} else{
 					// Mother Board Serial Number
 					// Since in 2.3.3 a.k.a gingerbread
-					systemSerialNumber = Build.SERIAL;
-				} else {
+					serial = Build.SERIAL;
+				}
 
-					try {
-						serial = this.getSerialNumberFromCpuInfo();
-					} catch (Exception ex) {
-						FlyveLog.e(ex.getMessage());
-					}
+				//Third try to get serial number from CpuInfo
+				if (serial.equals("") || serial.equalsIgnoreCase(android.os.Build.UNKNOWN)) {
 
+					serial = this.getSerialNumberFromCpuInfo();
 					if (!serial.equals("") && !serial.equals("0000000000000000")) {
 						systemSerialNumber = serial;
 					} else {
@@ -226,12 +261,26 @@ public class Bios extends Categories {
 							systemSerialNumber = serial;
 						}
 					}
+
+				}else{
+					systemSerialNumber = serial;
 				}
 			} else {
 				systemSerialNumber = serial;
 			}
+
 		} catch (Exception ex) {
-			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.BIOS_SYSTEM_SERIAL, ex.getMessage()));
+			InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.BIOS_SYSTEM_SERIAL, ex.getMessage()));
+		}
+
+		//serial cannot by empty
+		//get uuid of need
+		if(systemSerialNumber.equalsIgnoreCase("Unknown")
+			|| systemSerialNumber.equalsIgnoreCase("N/A")
+			|| systemSerialNumber.isEmpty()
+			|| systemSerialNumber.equalsIgnoreCase(android.os.Build.UNKNOWN)){
+			Hardware hardware = new Hardware(context);
+			systemSerialNumber = hardware.getUUID();
 		}
 		return systemSerialNumber;
 	}
@@ -247,27 +296,35 @@ public class Bios extends Categories {
 		try {
 			Class<?> c = Class.forName("android.os.SystemProperties");
 			Method get = c.getMethod("get", String.class);
+			get.setAccessible(true);
 
 			// (?) Lenovo Tab (https://stackoverflow.com/a/34819027/1276306)
 			serialNumber = (String) get.invoke(c, "gsm.sn1");
 
-			if (serialNumber.equals("")) {
+			if (serialNumber.equals(""))
+				// Samsung Galaxy S5 (SM-G900F) : 6.0.1
+				// Samsung Galaxy S6 (SM-G920F) : 7.0
+				// Samsung Galaxy Tab 4 (SM-T530) : 5.0.2
+				// (?) Samsung Galaxy Tab 2 (https://gist.github.com/jgold6/f46b1c049a1ee94fdb52)
 				serialNumber = (String) get.invoke(c, "ril.serialnumber");
 
-				if (serialNumber.equals("")) {
-					serialNumber = (String) get.invoke(c, "ro.serialno");
+			if (serialNumber.equals(""))
+				// Archos 133 Oxygen : 6.0.1
+				// Google Nexus 5 : 6.0.1
+				// Hannspree HANNSPAD 13.3" TITAN 2 (HSG1351) : 5.1.1
+				// Honor 5C (NEM-L51) : 7.0
+				// Honor 5X (KIW-L21) : 6.0.1
+				// Huawei M2 (M2-801w) : 5.1.1
+				// (?) HTC Nexus One : 2.3.4 (https://gist.github.com/tetsu-koba/992373)
+				serialNumber = (String) get.invoke(c, "ro.serialno");
 
-					if (serialNumber.equals("")) {
-						serialNumber = (String) get.invoke(c, "sys.serialnumber");
-					}
-				}
-			}
+			if (serialNumber.equals(""))
+				// (?) Samsung Galaxy Tab 3 (https://stackoverflow.com/a/27274950/1276306)
+				serialNumber = (String) get.invoke(c, "sys.serialnumber");
 
-
-
-		} catch (Exception e) {
-			e.printStackTrace();
-			serialNumber = null;
+		} catch (Exception ex) {
+			InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.BIOS_SERIAL_PRIVATE, ex.getMessage()));
+			serialNumber = "";
 		}
 
 		return serialNumber;
@@ -278,7 +335,7 @@ public class Bios extends Categories {
 	 * @return String
 	 */
 	private String getSerialNumberFromCpuInfo() {
-		String serial = "N/A";
+		String serial = "";
 		try {
 			File f = new File(CPUINFO);
 			FileReader fr = null;
@@ -288,7 +345,7 @@ public class Bios extends Categories {
 				String line;
 				while ((line = br.readLine()) != null) {
 					if (line.startsWith("Serial")) {
-						FlyveLog.d(line);
+						InventoryLog.d(line);
 						String[] results = line.split(":");
 						serial = results[1].trim();
 					}
@@ -296,14 +353,14 @@ public class Bios extends Categories {
 				br.close();
 				fr.close();
 			} catch (IOException e) {
-				FlyveLog.e(e.getMessage());
+				InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.BIOS_CPU_SERIAL, e.getMessage()));
 			} finally {
 				if (fr != null) {
 					fr.close();
 				}
 			}
 		} catch (Exception ex) {
-			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.BIOS_CPU_SERIAL, ex.getMessage()));
+			InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.BIOS_CPU_SERIAL, ex.getMessage()));
 		}
 
 		return serial.trim();

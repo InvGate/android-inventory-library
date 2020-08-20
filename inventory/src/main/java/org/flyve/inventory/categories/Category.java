@@ -29,7 +29,7 @@ package org.flyve.inventory.categories;
 import android.os.Build;
 
 import org.flyve.inventory.CommonErrorType;
-import org.flyve.inventory.FlyveLog;
+import org.flyve.inventory.InventoryLog;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.xmlpull.v1.XmlSerializer;
@@ -121,7 +121,10 @@ public class Category extends LinkedHashMap<String, CategoryValue> {
        if (value != null) {
            if (value.getCategory() == null) {
                String s = value.getValue();
-               if (s != null && !s.equals("") && !s.equals(Build.UNKNOWN)){
+               if (s != null && !s.equals(Build.UNKNOWN)){
+                   if(s.equalsIgnoreCase("N/A") || s.equalsIgnoreCase("N\\/A")){
+                       value.setValue("");
+                   }
                    return super.put(key, value);
                } else if (value.getValues() != null && value.getValues().size() > 0) {
                    return super.put(key, value);
@@ -149,7 +152,7 @@ public class Category extends LinkedHashMap<String, CategoryValue> {
 
             serializer.endTag(null, mType);
         } catch (Exception ex) {
-            FlyveLog.e(FlyveLog.getMessage(String.valueOf(CommonErrorType.CATEGORY_TO_XML), ex.getMessage()));
+            InventoryLog.e(InventoryLog.getMessage(String.valueOf(CommonErrorType.CATEGORY_TO_XML), ex.getMessage()));
         }
     }
 
@@ -158,14 +161,15 @@ public class Category extends LinkedHashMap<String, CategoryValue> {
             serializer.startTag(null, mType);
 
             for (Map.Entry<String, CategoryValue> entry : this.entrySet()) {
-                if(!this.get(entry.getKey()).isPrivate()) {
+                if(this.get(entry.getKey()).isPrivate() != null
+                        && !this.get(entry.getKey()).isPrivate()) {
                     setXMLValues(serializer, entry);
                 }
             }
 
             serializer.endTag(null, mType);
         } catch (Exception ex) {
-            FlyveLog.e(FlyveLog.getMessage(String.valueOf(CommonErrorType.CATEGORY_TO_XML_WITHOUT_PRIVATE), ex.getMessage()));
+            InventoryLog.e(InventoryLog.getMessage(String.valueOf(CommonErrorType.CATEGORY_TO_XML_WITHOUT_PRIVATE), ex.getMessage()));
         }
     }
 
@@ -194,14 +198,14 @@ public class Category extends LinkedHashMap<String, CategoryValue> {
                 for (Entry<String, CategoryValue> entries : category.entrySet()) {
                     String xmlName = entries.getKey();
                     for (String value : category.get(xmlName).getValues()) {
-                        setChildXMLValue(serializer, xmlName, value, false);
+                        setChildXMLValue(serializer, xmlName, value, category.get(xmlName).hasCDATA());
                     }
                 }
             } else {
                 for (Entry<String, CategoryValue> entries : category.entrySet()) {
                     String xmlName = entries.getKey();
                     String value = category.get(xmlName).getValue();
-                    setChildXMLValue(serializer, xmlName, value, false);
+                    setChildXMLValue(serializer, xmlName, value, category.get(xmlName).hasCDATA());
                 }
             }
             serializer.endTag(null, category.getType());
@@ -228,7 +232,7 @@ public class Category extends LinkedHashMap<String, CategoryValue> {
 
             return jsonCategories;
         } catch ( Exception ex ) {
-            FlyveLog.e(FlyveLog.getMessage(String.valueOf(CommonErrorType.CATEGORY_TO_JSON), ex.getMessage()));
+            InventoryLog.e(InventoryLog.getMessage(String.valueOf(CommonErrorType.CATEGORY_TO_JSON), ex.getMessage()));
             return new JSONObject();
         }
     }
@@ -237,14 +241,15 @@ public class Category extends LinkedHashMap<String, CategoryValue> {
         try {
             JSONObject jsonCategories = new JSONObject();
             for (Map.Entry<String,CategoryValue> entry : this.entrySet()) {
-                if(!this.get(entry.getKey()).isPrivate()) {
+                if(this.get(entry.getKey()).isPrivate() != null
+                        && !this.get(entry.getKey()).isPrivate()) {
                     setJSONValues(jsonCategories, entry);
                 }
             }
 
             return jsonCategories;
         } catch ( Exception ex ) {
-            FlyveLog.e(FlyveLog.getMessage(String.valueOf(CommonErrorType.CATEGORY_TO_JSON_WITHOUT_PRIVATE), ex.getMessage()));
+            InventoryLog.e(InventoryLog.getMessage(String.valueOf(CommonErrorType.CATEGORY_TO_JSON_WITHOUT_PRIVATE), ex.getMessage()));
             return new JSONObject();
         }
     }

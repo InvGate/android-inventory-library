@@ -10,8 +10,7 @@
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://conventionalcommits.org)
 [![Greenkeeper badge](https://badges.greenkeeper.io/flyve-mdm/android-inventory-library.svg)](https://greenkeeper.io/)
 [![GitHub release](https://img.shields.io/github/release/flyve-mdm/android-inventory-library.svg)](https://github.com/flyve-mdm/android-inventory-library/releases)
-[![Maven Central](https://img.shields.io/maven-central/v/com.flyvemdm/inventory.svg)](https://bintray.com/flyve-mdm/inventory/android-inventory-library/)
-
+[![Bintray Jcenter](https://img.shields.io/bintray/v/flyve-mdm/teclib-repository/android-inventory-library)](https://bintray.com/flyve-mdm/teclib-repository/android-inventory-library/)
 Flyve MDM allows your company to maintain control of all mobile devices, whilst providing comprehensive protection and enhanced security for sensitive corporate data, via a centralized management console.
 
 To get started, check out [Flyve MDM Website](https://flyve-mdm.com/)!
@@ -71,27 +70,18 @@ Visit our [website](http://flyve.org/android-inventory-library/) for every eleme
 
 Download the latest JAR, grab via Maven, insert on `build.gradle` at app level or use Apache Ivy.
 
-### Maven
-
-```xml
-<dependency>
-  <groupId>org.flyve</groupId>
-  <artifactId>inventory</artifactId>
-  <version>1.0.0</version>
-  <type>pom</type>
-</dependency>
-```
-
-### Gradle
+### Gradle app
 
 ```groovy
-compile 'org.flyve:inventory:1.0.0'
+implementation 'org.flyve:inventory:1.3.0@aar'
 ```
+
+
 
 ### Apache Ivy
 
 ```
-<dependency org='org.flyve' name='inventory' rev='0.1.0'>
+<dependency org='org.flyve' name='inventory' rev='1.3.0'>
   <artifact name='inventory' ext='pom' ></artifact>
 </dependency>
 ```

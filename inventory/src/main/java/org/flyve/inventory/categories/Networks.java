@@ -28,12 +28,16 @@ package org.flyve.inventory.categories;
 
 import android.app.Service;
 import android.content.Context;
+import android.net.ConnectivityManager;
 import android.net.DhcpInfo;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkInfo;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 
 import org.flyve.inventory.CommonErrorType;
-import org.flyve.inventory.FlyveLog;
+import org.flyve.inventory.InventoryLog;
 import org.flyve.inventory.Utils;
 
 import java.math.BigInteger;
@@ -42,6 +46,8 @@ import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.InterfaceAddress;
 import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -67,13 +73,14 @@ public class Networks extends Categories {
 
 	// Properties of this component
 	private static final String TYPE = "WIFI";
+	private static final String NO_DECSRIPTION_PROVIDED = "No description found";
 	private DhcpInfo dhcp;
 	private WifiInfo wifi;
 	private final Context context;
 
 	/**
      * Indicates whether some other object is "equal to" this one
-     * @param Object obj the reference object with which to compare
+     * @param @Object obj the reference object with which to compare
      * @return boolean true if the object is the same as the one given in argument
      */
 	@Override
@@ -120,10 +127,10 @@ public class Networks extends Categories {
 			dhcp = pWM.getDhcpInfo();
 			wifi = pWM.getConnectionInfo();
 
-			FlyveLog.d("<===WIFI DHCP===>");
-			FlyveLog.d("dns1=" + StringUtils.intToIp(dhcp.dns1));
-			FlyveLog.d("dns2=" + StringUtils.intToIp(dhcp.dns2));
-			FlyveLog.d("leaseDuration=" + dhcp.leaseDuration);
+			InventoryLog.d("<===WIFI DHCP===>");
+			InventoryLog.d("dns1=" + StringUtils.intToIp(dhcp.dns1));
+			InventoryLog.d("dns2=" + StringUtils.intToIp(dhcp.dns2));
+			InventoryLog.d("leaseDuration=" + dhcp.leaseDuration);
 
 			c.put("DESCRIPTION", new CategoryValue(getDescription(), "DESCRIPTION", "description", true, false));
 			c.put("DRIVER", new CategoryValue(TYPE, "DRIVER", "driver", true, false));
@@ -148,7 +155,7 @@ public class Networks extends Categories {
 				pWM.setWifiEnabled(false);
 			}
 		} catch (Exception ex) {
-			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.NETWORKS, ex.getMessage()));
+			InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.NETWORKS, ex.getMessage()));
 		}
 	}
 
@@ -169,7 +176,7 @@ public class Networks extends Categories {
 				}
 			}
 		} catch (Exception ex) {
-			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.NETWORKS_MAC_ADDRESS, ex.getMessage()));
+			InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.NETWORKS_MAC_ADDRESS, ex.getMessage()));
 		}
 
 		return macAddress;
@@ -190,7 +197,7 @@ public class Networks extends Categories {
 				return buf.toString();
 			}
 		} catch (Exception ex) {
-			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.NETWORKS_MAC_ADDRESS_VALUE, ex.getMessage()));
+			InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.NETWORKS_MAC_ADDRESS_VALUE, ex.getMessage()));
 		}
 
 		return "N/A";
@@ -205,7 +212,7 @@ public class Networks extends Categories {
 		try {
 			value = String.valueOf(wifi.getLinkSpeed());
 		} catch (Exception ex) {
-			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.NETWORKS_SPEED, ex.getMessage()));
+			InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.NETWORKS_SPEED, ex.getMessage()));
 		}
 		return value;
 	}
@@ -219,7 +226,7 @@ public class Networks extends Categories {
 		try {
 			value = String.valueOf(wifi.getBSSID());
 		} catch (Exception ex) {
-			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.NETWORKS_BSS_ID, ex.getMessage()));
+			InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.NETWORKS_BSS_ID, ex.getMessage()));
 		}
 		return value;
 	}
@@ -234,7 +241,7 @@ public class Networks extends Categories {
 		try {
 			value = String.valueOf(wifi.getSSID());
 		} catch (Exception ex) {
-			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.NETWORKS_SS_ID, ex.getMessage()));
+			InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.NETWORKS_SS_ID, ex.getMessage()));
 		}
 		return value;
 	}
@@ -248,7 +255,7 @@ public class Networks extends Categories {
 		try {
 			value = StringUtils.intToIp(dhcp.gateway);
 		} catch (Exception ex) {
-			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.NETWORKS_IP_GATEWAY, ex.getMessage()));
+			InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.NETWORKS_IP_GATEWAY, ex.getMessage()));
 		}
 		return value;
 	}
@@ -262,7 +269,7 @@ public class Networks extends Categories {
 		try {
 			value = StringUtils.intToIp(dhcp.ipAddress);
 		} catch (Exception ex) {
-			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.NETWORKS_IP_ADDRESS, ex.getMessage()));
+			InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.NETWORKS_IP_ADDRESS, ex.getMessage()));
 		}
 		return value;
 	}
@@ -276,7 +283,7 @@ public class Networks extends Categories {
 		try {
 			value = StringUtils.intToIp(dhcp.netmask);
 		} catch (Exception ex) {
-			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.NETWORKS_IP_MASK, ex.getMessage()));
+			InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.NETWORKS_IP_MASK, ex.getMessage()));
 		}
 		return value;
 	}
@@ -290,7 +297,7 @@ public class Networks extends Categories {
 		try {
 			value = StringUtils.intToIp(dhcp.serverAddress);
 		} catch (Exception ex) {
-			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.NETWORKS_IP_DH_CP, ex.getMessage()));
+			InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.NETWORKS_IP_DH_CP, ex.getMessage()));
 		}
 		return value;
 	}
@@ -304,7 +311,7 @@ public class Networks extends Categories {
 		try {
 			value = StringUtils.getSubNet(wifi.getIpAddress());
 		} catch (Exception ex) {
-			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.NETWORKS_IP_SUBNET, ex.getMessage()));
+			InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.NETWORKS_IP_SUBNET, ex.getMessage()));
 		}
 		return value;
 	}
@@ -315,13 +322,53 @@ public class Networks extends Categories {
 	 */
 	public String getStatus() {
 		String value = "N/A";
+
 		try {
 			value = Utils.getCatInfo("/sys/class/net/wlan0/operstate");
-		} catch (Exception ex) {
-			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.NETWORKS_STATUS, ex.getMessage()));
+		}catch (Exception ex){
+			InventoryLog.d(InventoryLog.getMessage(context, CommonErrorType.NETWORKS_STATUS, "Unable to get WIFI status from /sys/class/net/wlan0/operstate try with API"));
 		}
+
+		if(value.trim().isEmpty() || value.equalsIgnoreCase("N/A")){
+			if(isConnectedToWifi()){
+				value = "up";
+			}else{
+				value = "down";
+			}
+		}
+
 		return value;
 	}
+
+
+	/**
+	 * Try to know if device is connected to WIFI
+	 * @return true or false
+	 */
+	private boolean isConnectedToWifi() {
+		ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+		if (connectivityManager == null) {
+			return false;
+		}
+
+		if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+			Network network = connectivityManager.getActiveNetwork();
+			NetworkCapabilities capabilities = connectivityManager.getNetworkCapabilities(network);
+			if (capabilities == null) {
+				return false;
+			}
+			return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI);
+		} else {
+			NetworkInfo networkInfo = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+			if (networkInfo == null) {
+				return false;
+			}
+			return networkInfo.isConnected();
+		}
+
+	}
+
+
 
 	/**
 	 * Get description network
@@ -330,17 +377,24 @@ public class Networks extends Categories {
 	public String getDescription() {
 		String name = "N/A";
 		try {
-			int ipAddress = wifi.getIpAddress();
-			byte[] ip = BigInteger.valueOf(ipAddress).toByteArray();
-			InetAddress inetAddress = InetAddress.getByAddress(ip);
-			NetworkInterface netInterface = NetworkInterface.getByInetAddress(inetAddress);
+			String ipadressString = Utils.getIPAddress(true);
+			InetAddress address = InetAddress.getByName(ipadressString);
+			NetworkInterface netInterface = NetworkInterface.getByInetAddress(address);
 			if (netInterface != null ) {
 				name = netInterface.getDisplayName();
 				return name;
 			}
-		} catch (Exception ex) {
-			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.NETWORKS_DESCRIPTION, ex.getMessage()));
+		} catch (UnknownHostException ex) {
+			InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.NETWORKS_DESCRIPTION, ex.getMessage()));
+		} catch (SocketException ex){
+			InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.NETWORKS_DESCRIPTION, ex.getMessage()));
+		} catch(Exception ex){
+			InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.NETWORKS_DESCRIPTION, ex.getMessage()));
 		}
+
+		//change name
+		name = NO_DECSRIPTION_PROVIDED;
+
 		return name;
 	}
 
@@ -432,7 +486,7 @@ public class Networks extends Categories {
 				}
 			}
 		} catch (Exception ex) {
-			FlyveLog.e(FlyveLog.getMessage(context, CommonErrorType.NETWORKS_LOCAL_IPV6, ex.getMessage()));
+			InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.NETWORKS_LOCAL_IPV6, ex.getMessage()));
 		}
 		return null;
 	}

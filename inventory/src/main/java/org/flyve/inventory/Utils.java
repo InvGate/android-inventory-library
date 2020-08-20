@@ -27,6 +27,7 @@
 package org.flyve.inventory;
 
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Environment;
 import android.telephony.TelephonyManager;
@@ -34,6 +35,7 @@ import android.text.format.DateFormat;
 import android.util.Xml;
 
 import org.flyve.inventory.categories.Categories;
+import org.flyve.inventory.categories.Hardware;
 import org.json.JSONObject;
 import org.xmlpull.v1.XmlSerializer;
 
@@ -47,12 +49,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StringWriter;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.text.Format;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Scanner;
@@ -156,18 +162,12 @@ public class Utils {
                                        boolean isPrivate, String tag) throws FlyveException {
         try {
 
-            if(!tag.equals("")) {
-                JSONObject accountInfo = new JSONObject();
-                accountInfo.put("keyName", "TAG");
-                accountInfo.put("keyValue", tag);
-            }
-
             JSONObject jsonAccessLog = new JSONObject();
-            jsonAccessLog.put("logDate", DateFormat.format("yyyy-MM-dd H:mm:ss", new Date()).toString());
-            jsonAccessLog.put("userId", "N/A");
+            jsonAccessLog.put("logDate", DateFormat.format("yyyy-MM-dd HH:mm:ss", new Date()).toString());
+            jsonAccessLog.put("userId", "");
 
             jsonAccessLog.put("keyname", "TAG");
-            jsonAccessLog.put("keyvalue", "N/A");
+            jsonAccessLog.put("keyvalue", tag);
 
             JSONObject content = new JSONObject();
             content.put("accessLog", jsonAccessLog);
@@ -186,9 +186,10 @@ public class Utils {
             JSONObject jsonQuery = new JSONObject();
             jsonQuery.put("query", "INVENTORY");
             jsonQuery.put("versionClient", appVersion);
-            jsonQuery.put("deviceId", getDeviceId());
+            jsonQuery.put("deviceId", getDeviceId(context));
             TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
-            if (telephonyManager != null) {
+            if (telephonyManager != null &&
+                    (context.checkPermission(android.Manifest.permission.READ_PHONE_STATE, android.os.Process.myPid(), android.os.Process.myUid()) == PackageManager.PERMISSION_GRANTED)) {
                 jsonQuery.put("IMEI", telephonyManager.getDeviceId());
             }
             jsonQuery.put("content", content);
@@ -199,7 +200,7 @@ public class Utils {
             return jsonRequest.toString();
 
         } catch (Exception ex) {
-            FlyveLog.e(FlyveLog.getMessage(String.valueOf(CommonErrorType.UTILS_CREATE_JSON), ex.getMessage()));
+            InventoryLog.e(InventoryLog.getMessage(String.valueOf(CommonErrorType.UTILS_CREATE_JSON), ex.getMessage()));
             throw new FlyveException(ex.getMessage(), ex.getCause());
         }
     }
@@ -228,29 +229,29 @@ public class Utils {
                 // Start REQUEST
                 serializer.startTag(null, "REQUEST");
                 serializer.startTag(null, "QUERY");
-                serializer.text("INVENTORY");
+                serializer.text("<![CDATA[" + "INVENTORY" + "]]>");
                 serializer.endTag(null, "QUERY");
 
                 serializer.startTag(null, "DEVICEID");
-                serializer.text(getDeviceId());
+                serializer.text("<![CDATA[" + getDeviceId(context) + "]]>");
                 serializer.endTag(null, "DEVICEID");
 
                 // Start CONTENT
                 serializer.startTag(null, "CONTENT");
 
                 serializer.startTag(null, "VERSIONCLIENT");
-                serializer.text(appVersion);
+                serializer.text("<![CDATA[" + appVersion + "]]>");
                 serializer.endTag(null, "VERSIONCLIENT");
 
                 // Start ACCOUNTINFO
                 serializer.startTag(null, "ACCOUNTINFO");
 
                 serializer.startTag(null, "KEYNAME");
-                serializer.text("TAG");
+                serializer.text("<![CDATA[" + "TAG" + "]]>");
                 serializer.endTag(null, "KEYNAME");
 
                 serializer.startTag(null, "KEYVALUE");
-                serializer.text(tag);
+                serializer.text("<![CDATA[" + tag + "]]>");
                 serializer.endTag(null, "KEYVALUE");
 
                 serializer.endTag(null, "ACCOUNTINFO");
@@ -259,26 +260,16 @@ public class Utils {
                 serializer.startTag(null, "ACCESSLOG");
 
                 serializer.startTag(null, "LOGDATE");
-                serializer.text(DateFormat.format("yyyy-MM-dd H:mm:ss", new Date()).toString());
+                serializer.text("<![CDATA[" + DateFormat.format("yyyy-MM-dd HH:mm:ss", new Date()).toString()+ "]]>");
                 serializer.endTag(null, "LOGDATE");
 
                 serializer.startTag(null, "USERID");
-                serializer.text("N/A");
+                serializer.text("");
                 serializer.endTag(null, "USERID");
 
                 serializer.endTag(null, "ACCESSLOG");
                 // End ACCESSLOG
 
-                if(!tag.equals("")) {
-                    serializer.startTag(null, "ACCOUNTINFO");
-                    serializer.startTag(null, "KEYNAME");
-                    serializer.text("TAG");
-                    serializer.endTag(null, "KEYNAME");
-                    serializer.startTag(null, "KEYVALUE");
-                    serializer.text(tag);
-                    serializer.endTag(null, "KEYVALUE");
-                    serializer.endTag(null, "ACCOUNTINFO");
-                }
 
                 for (Categories cat : categories) {
                     if(isPrivate) {
@@ -299,7 +290,7 @@ public class Utils {
                 return writer.toString();
 
             } catch (Exception ex) {
-                FlyveLog.e(FlyveLog.getMessage(String.valueOf(CommonErrorType.UTILS_CREATE_XML), ex.getMessage()));
+                InventoryLog.e(InventoryLog.getMessage(String.valueOf(CommonErrorType.UTILS_CREATE_XML), ex.getMessage()));
                 throw new FlyveException(ex.getMessage(), ex.getCause());
             }
         }
@@ -307,10 +298,15 @@ public class Utils {
         return "";
     }
 
-    private static String getDeviceId() {
+    private static String getDeviceId(Context context) {
+
+        Hardware hardware = new Hardware(context);
         String currentTimeStamp = getCurrentTimeStamp("yyyy-MM-dd-HH-mm-ss");
-        String hostName = getSystemProperty("net.hostname");
-        return hostName.trim() + "-" + currentTimeStamp.trim();
+        String name = hardware.getName();
+
+        String deviceID =  name.trim() + "-" + currentTimeStamp.trim();
+
+        return deviceID.replaceAll("\\s","");
     }
 
     public static Map<String, String> getCatMapInfo(String path) throws FileNotFoundException {
@@ -351,7 +347,7 @@ public class Utils {
                 concatInfo.append(s.nextLine());
             }
         } catch (Exception ex) {
-            FlyveLog.e(FlyveLog.getMessage(String.valueOf(CommonErrorType.UTILS_CAT_INFO_MULTIPLE), ex.getMessage()));
+            InventoryLog.e(InventoryLog.getMessage(String.valueOf(CommonErrorType.UTILS_CAT_INFO_MULTIPLE), ex.getMessage()));
         }
         return concatInfo.toString();
     }
@@ -360,8 +356,8 @@ public class Utils {
         try {
             Scanner s = new Scanner(new File(path));
             return s.next();
-        } catch (Exception ex) {
-            FlyveLog.e(FlyveLog.getMessage(String.valueOf(CommonErrorType.UTILS_CAT_INFO), ex.getMessage()));
+        } catch (FileNotFoundException ex) {
+            InventoryLog.e(InventoryLog.getMessage(String.valueOf(CommonErrorType.UTILS_CAT_INFO), ex.getMessage()));
         }
         return "";
     }
@@ -408,7 +404,7 @@ public class Utils {
 
             return arr;
         } catch (IOException ex) {
-            FlyveLog.e(FlyveLog.getMessage(String.valueOf(CommonErrorType.UTILS_DEVICE_PROPERTIES), ex.getMessage()));
+            InventoryLog.e(InventoryLog.getMessage(String.valueOf(CommonErrorType.UTILS_DEVICE_PROPERTIES), ex.getMessage()));
         }
 
         return new ArrayList<>();
@@ -449,7 +445,7 @@ public class Utils {
             is.close();
             json = new String(buffer, "UTF-8");
         } catch (IOException ex) {
-            FlyveLog.e(FlyveLog.getMessage(String.valueOf(CommonErrorType.UTILS_LOAD_JSON_ASSET), ex.getMessage()));
+            InventoryLog.e(InventoryLog.getMessage(String.valueOf(CommonErrorType.UTILS_LOAD_JSON_ASSET), ex.getMessage()));
             return null;
         }
         return json;
@@ -475,9 +471,9 @@ public class Utils {
 
             if(!dir.exists()) {
                 if(dir.mkdirs()) {
-                    FlyveLog.d("create path");
+                    InventoryLog.d("create path");
                 } else {
-                    FlyveLog.e("cannot create path");
+                    InventoryLog.e("cannot create path");
                     return;
                 }
             }
@@ -487,13 +483,13 @@ public class Utils {
             if (!logFile.exists())  {
                 try  {
                     if(logFile.createNewFile()) {
-                        FlyveLog.d("File created");
+                        InventoryLog.d("File created");
                     } else {
-                        FlyveLog.d("Cannot create file");
+                        InventoryLog.d("Cannot create file");
                         return;
                     }
                 } catch (IOException ex) {
-                    FlyveLog.e(ex.getMessage());
+                    InventoryLog.e(ex.getMessage());
                 }
             }
 
@@ -509,23 +505,50 @@ public class Utils {
                 buf.flush();
                 buf.close();
                 fw.close();
-                FlyveLog.d("Inventory stored");
+                InventoryLog.d("Inventory stored");
             }
             catch (IOException ex) {
-                FlyveLog.e(ex.getMessage());
+                InventoryLog.e(ex.getMessage());
             }
             finally {
                 if(fw!=null) {
                     try {
                         fw.close();
                     } catch(Exception ex) {
-                        FlyveLog.e(ex.getMessage());
+                        InventoryLog.e(ex.getMessage());
                     }
                 }
             }
         } else {
-            FlyveLog.d("External Storage is not available");
+            InventoryLog.d("External Storage is not available");
         }
+    }
+
+    public static String getIPAddress(boolean useIPv4) {
+        try {
+            List<NetworkInterface> interfaces = Collections.list(NetworkInterface.getNetworkInterfaces());
+            for (NetworkInterface intf : interfaces) {
+                List<InetAddress> addrs = Collections.list(intf.getInetAddresses());
+                for (InetAddress addr : addrs) {
+                    if (!addr.isLoopbackAddress()) {
+                        String sAddr = addr.getHostAddress();
+                        //boolean isIPv4 = InetAddressUtils.isIPv4Address(sAddr);
+                        boolean isIPv4 = sAddr.indexOf(':')<0;
+
+                        if (useIPv4) {
+                            if (isIPv4)
+                                return sAddr;
+                        } else {
+                            if (!isIPv4) {
+                                int delim = sAddr.indexOf('%'); // drop ip6 zone suffix
+                                return delim<0 ? sAddr.toUpperCase() : sAddr.substring(0, delim).toUpperCase();
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception ignored) { } // for now eat exceptions
+        return "";
     }
 
 }

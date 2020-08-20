@@ -27,10 +27,13 @@
 package org.flyve.example_java;
 
 import android.Manifest;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.StrictMode;
 import android.support.v4.app.ActivityCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Base64;
 import android.util.Log;
@@ -38,6 +41,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
+import org.flyve.inventory.InventoryLog;
 import org.flyve.inventory.InventoryTask;
 
 import java.io.BufferedReader;
@@ -55,6 +59,47 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "inventory.example";
     private InventoryTask inventoryTask;
 
+    public void showDialogShare(final Context context) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this );
+        builder.setTitle(R.string.dialog_share_title);
+
+        final int[] type = new int[1];
+
+        //list of items
+        String[] items = context.getResources().getStringArray(R.array.export_list);
+        builder.setSingleChoiceItems(items, 0,
+                new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        type[0] = which;
+                    }
+                });
+
+        String positiveText = context.getString(android.R.string.ok);
+        builder.setPositiveButton(positiveText,
+                new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        // positive button logic
+                        new InventoryTask(MainActivity.this, TAG, false).shareInventory(type[0]);
+                    }
+                });
+
+        String negativeText = context.getString(android.R.string.cancel);
+        builder.setNegativeButton(negativeText,
+                new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        // negative button logic
+                    }
+                });
+
+        AlertDialog dialog = builder.create();
+        // display dialog
+        dialog.show();
+
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -65,43 +110,51 @@ public class MainActivity extends AppCompatActivity {
                         Manifest.permission.READ_EXTERNAL_STORAGE,
                         Manifest.permission.WRITE_EXTERNAL_STORAGE,
                         Manifest.permission.CAMERA,
+                        Manifest.permission.READ_PHONE_STATE,
                 },
                 1);
+
+        final Button btnShare = findViewById(R.id.btnShare);
+        btnShare.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                showDialogShare(getApplicationContext());
+            }
+        });
+
+        btnShare.setVisibility(View.INVISIBLE);
 
         Button btnRun = findViewById(R.id.btnRun);
         btnRun.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                inventoryTask = new InventoryTask(MainActivity.this, "example-app-java", true);
-                inventoryTask.getXML(new InventoryTask.OnTaskCompleted() {
-                    @Override
-                    public void onTaskSuccess(String data) {
-                        Log.d(TAG, data);
-                        try {
-                            getSyncWebData("http://10.0.0.6:8000/1e6dwka1", data, null);
-                        } catch (Exception ex) {
-                            Log.e(TAG, ex.getMessage());
-                        }
-                        Toast.makeText(MainActivity.this, "Inventory Success, check the log", Toast.LENGTH_SHORT).show();
-                    }
+            inventoryTask = new InventoryTask(MainActivity.this, "example-app-java", true);
+            inventoryTask.getXML(new InventoryTask.OnTaskCompleted() {
+                @Override
+                public void onTaskSuccess(String data) {
+                    InventoryLog.d(data);
+                    Toast.makeText(MainActivity.this, "Inventory Success, check the log", Toast.LENGTH_SHORT).show();
+                }
 
-                    @Override
-                    public void onTaskError(Throwable error) {
-                        Log.e(TAG, error.getMessage());
-                        Toast.makeText(MainActivity.this, "Inventory fail, check the log", Toast.LENGTH_SHORT).show();
-                    }
-                });
-                inventoryTask.getJSON(new InventoryTask.OnTaskCompleted() {
-                    @Override
-                    public void onTaskSuccess(String data) {
-                        Log.d(TAG, data);
-                    }
+                @Override
+                public void onTaskError(Throwable error) {
+                    InventoryLog.e(error.getMessage());
+                    Toast.makeText(MainActivity.this, "Inventory fail, check the log", Toast.LENGTH_SHORT).show();
+                }
+            });
+            inventoryTask.getJSON(new InventoryTask.OnTaskCompleted() {
+                @Override
+                public void onTaskSuccess(String data) {
+                    InventoryLog.d(data);
+                    //show btn share
+                    btnShare.setVisibility(View.VISIBLE);
+                }
 
-                    @Override
-                    public void onTaskError(Throwable error) {
-                        Toast.makeText(MainActivity.this, "Error", Toast.LENGTH_SHORT).show();
-                    }
-                });
+                @Override
+                public void onTaskError(Throwable error) {
+                    Toast.makeText(MainActivity.this, "Error", Toast.LENGTH_SHORT).show();
+                }
+            });
             }
         });
     }
@@ -115,7 +168,8 @@ public class MainActivity extends AppCompatActivity {
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED
                         && grantResults[1] == PackageManager.PERMISSION_GRANTED
-                        && grantResults[2] == PackageManager.PERMISSION_GRANTED) {
+                        && grantResults[2] == PackageManager.PERMISSION_GRANTED
+                        && grantResults[3] == PackageManager.PERMISSION_GRANTED) {
                 }
             }
         }

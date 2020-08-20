@@ -1,6 +1,6 @@
 {
   "name": "@teclib/android-inventory-library",
-  "version": "1.0.0",
+  "version": "1.4.4",
   "description": "Flyve MDM Inventory Library for Android",
   "main": "index.js",
   "scripts": {
@@ -28,6 +28,12 @@
     "conventional-github-releaser": "^3.1.2",
     "gh-pages": "^2.0.0",
     "node-github-release": "^0.1.1",
-    "standard-version": "^5.0.0"
+    "standard-version": "^7.0.0"
+  },
+  "dependencies": {
+    "https-proxy-agent": "^5.0.0",
+    "lodash": "^4.17.13",
+    "lodash.merge": "^4.6.2",
+    "lodash.template": "^4.5.0"
   }
 }

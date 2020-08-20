@@ -32,6 +32,7 @@ import android.net.Uri;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.support.v4.content.FileProvider;
 import android.util.Log;
 
 import com.orhanobut.logger.AndroidLogAdapter;
@@ -134,7 +135,7 @@ public class InventoryTask {
         Class<Categories> catClass;
 
         for(String c : categories) {
-            FlyveLog.v(String.format("new INVENTORY of %s", c));
+            InventoryLog.v(String.format("new INVENTORY of %s", c));
 
             // Loading the class with name of the ArrayList
             try {
@@ -143,7 +144,7 @@ public class InventoryTask {
 
             }
             catch (Exception ex) {
-                FlyveLog.e( ex.getCause().toString() );
+                InventoryLog.e( ex.getCause().toString() );
                 throw new FlyveException(ex.getMessage(), ex.getCause());
             }
 
@@ -153,7 +154,7 @@ public class InventoryTask {
                     Constructor<Categories> co = catClass.getConstructor(Context.class);
                     mContent.add(co.newInstance(ctx));
                 } catch ( Exception ex ) {
-                    FlyveLog.e( ex.getCause().toString() );
+                    InventoryLog.e( ex.getCause().toString() );
                     throw new FlyveException(ex.getMessage(), ex.getCause());
                 }
             }
@@ -331,12 +332,17 @@ public class InventoryTask {
 
     public void shareInventory(int type){
         Intent intent = new Intent(Intent.ACTION_SEND);
-        intent.setType("text/plain");
         String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath();
         if(type==1) {
-            intent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(new File(path + "/Inventory.json")));
+            Uri json = FileProvider.getUriForFile(ctx, ctx.getApplicationContext().getPackageName() + ".provider",new File(path + "/Inventory.json"));
+            intent.setType("application/json");
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.putExtra(Intent.EXTRA_STREAM,  json);
         } else {
-            intent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(new File(path + "/Inventory.xml")));
+            Uri xml = FileProvider.getUriForFile(ctx, ctx.getApplicationContext().getPackageName() + ".provider",new File(path + "/Inventory.xml"));
+            intent.setType("application/xml");
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.putExtra(Intent.EXTRA_STREAM, xml);
         }
         this.ctx.startActivity(Intent.createChooser(intent, "Share your inventory"));
     }
