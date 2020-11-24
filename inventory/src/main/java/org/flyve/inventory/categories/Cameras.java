@@ -2,7 +2,7 @@
  *  LICENSE
  *
  *  This file is part of Flyve MDM Inventory Library for Android.
- * 
+ *
  *  Inventory Library for Android is a subproject of Flyve MDM.
  *  Flyve MDM is a mobile device management software.
  *
@@ -51,7 +51,6 @@ import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 
@@ -82,7 +81,6 @@ public class Cameras
 	public Cameras(Context xCtx) {
         super(xCtx);
         context = xCtx;
-
         cameraVendors = Utils.loadJSONFromAsset(xCtx, "camera_vendors.json");
 
         // Get resolutions of the camera
@@ -94,7 +92,8 @@ public class Cameras
                     Category c = new Category("CAMERAS", "cameras");
                     CameraCharacteristics chars = getCharacteristics(xCtx, index);
                     if (chars != null) {
-                        c.put("RESOLUTION", new CategoryValue(getResolution(chars), "RESOLUTION", "resolution"));
+                        c.put("DESIGNATION", new CategoryValue(Integer.toString(index), "DESIGNATION", "designation"));
+                        c.put("RESOLUTIONIMAGE", new CategoryValue(getResolution(chars), "RESOLUTIONIMAGE", "resolutionimage"));
                         c.put("LENSFACING", new CategoryValue(getFacingState(chars), "LENSFACING", "lensfacing"));
                         c.put("FLASHUNIT", new CategoryValue(getFlashUnit(chars), "FLASHUNIT", "flashunit"));
                         c.put("IMAGEFORMATS", new CategoryValue(getImageFormat(chars), "IMAGEFORMATS", "imageformats"));
@@ -138,7 +137,7 @@ public class Cameras
 
     /**
      * Get info characteristics of the camera
-     * @param xCtx
+     * @param xCtx Context
      * @param index number of the camera
      * @return CameraCharacteristics type object
      */
@@ -158,10 +157,12 @@ public class Cameras
 
     /**
      * Get resolution from the camera
-     * @param characteristics
+     * @param characteristics CameraCharacteristics
      * @return String resolution camera
      */
-    public String getResolution(CameraCharacteristics characteristics) {
+    public ArrayList<String> getResolution(CameraCharacteristics characteristics) {
+        ArrayList<String> resolutions = new ArrayList<>();
+
         String value = "N/A";
         try {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
@@ -174,28 +175,33 @@ public class Cameras
                         if (rect != null) {
                             width = rect.width();
                             height = rect.height();
+                            value = width + "x" + height;
+                            resolutions.add(value);
                         }
                     } else {
-                        Size size = outputSizes[outputSizes.length - 1];
-                        width = size.getWidth();
-                        height = size.getHeight();
+                        for (int i = 0; i <outputSizes.length; i++ ) {
+                            Size size = outputSizes[i];
+                            width = size.getWidth();
+                            height = size.getHeight();
+                            value = width + "x" + height;
+                            resolutions.add(value);
+                        }
                     }
-                    value = width + "x" + height;
                 } else {
-                    return value;
+                    return resolutions;
                 }
             } else {
-                return value;
+                return resolutions;
             }
         } catch (Exception ex) {
             InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.CAMERA_RESOLUTION, ex.getMessage()));
         }
-        return value;
+        return resolutions;
     }
 
     /**
      * Get direction the camera faces relative to device screen
-     * @param characteristics
+     * @param characteristics CameraCharacteristics
      * @return String The camera device faces the same direction as the device's screen
      */
     public String getFacingState(CameraCharacteristics characteristics) {
@@ -225,7 +231,7 @@ public class Cameras
 
     /**
      * Whether this camera device has a flash unit.
-     * @param characteristics
+     * @param characteristics CameraCharacteristics
      * @return String 0 no available, 1 is available
      */
     public String getFlashUnit(CameraCharacteristics characteristics) {
@@ -243,7 +249,7 @@ public class Cameras
 
     /**
      * Get image format camera
-     * @param characteristics
+     * @param characteristics CameraCharacteristics
      * @return String image format camera
      */
     public ArrayList<String> getImageFormat(CameraCharacteristics characteristics) {
@@ -256,7 +262,9 @@ public class Cameras
                     if (outputFormats != null) {
                         for (int value : outputFormats) {
                             String type = typeFormat(value);
-                            types.add(type.replaceAll("[<>]", ""));
+                            if(!type.isEmpty()){
+                                types.add(type.replaceAll("[<>]", ""));
+                            }
                         }
                     }
                 }
@@ -269,6 +277,8 @@ public class Cameras
 
     private String typeFormat(int i) {
         switch (i) {
+            case 0:
+                return "UNKNOWN";
             case 4:
                 return "RGB_565";
             case 16:
@@ -279,16 +289,38 @@ public class Cameras
                 return "YUY2";
             case 32:
                 return "RAW_SENSOR";
+            case 34:
+                return "PRIVATE";
             case 35:
                 return "YUV_420_888";
+            case 36:
+                return "RAW_PRIVATE";
             case 37:
                 return "RAW10";
+            case 38:
+                return "RAW12";
             case 39:
                 return "YUV_422_888";
+            case 40:
+                return "YUV_444_888";
+            case 41:
+                return "FLEX_RGB_888";
+            case 42:
+                return "FLEX_RGBA_8888";
             case 256:
                 return "JPEG";
+            case 257:
+                return "DEPTH_POINT_CLOUD";
             case 842094169:
                 return "YV12";
+            case 1144402265:
+                return "DEPTH16";
+            case 1212500294:
+                return "HEIC";
+            case 1768253795:
+                return "DEPTH_JPEG";
+            case 538982489:
+                return "Y8";
             default:
                 return "";
         }
@@ -296,7 +328,7 @@ public class Cameras
 
     /**
      * Get orientation camera
-     * @param characteristics
+     * @param characteristics CameraCharacteristics
      * @return String orientation camera
      */
     public String getOrientation(CameraCharacteristics characteristics) {
@@ -319,27 +351,32 @@ public class Cameras
      * @param index number of camera
      * @return String video resolution camera
      */
-    public String getVideoResolution(int index) {
-        String value = "N/A";
+    public ArrayList<String> getVideoResolution(int index) {
+        ArrayList<String> resolutions = new ArrayList<>();
+        String value;
         try {
             Camera open = Camera.open(index);
             Camera.Parameters parameters = open.getParameters();
             List<Camera.Size> supportedVideoSizes = parameters.getSupportedVideoSizes();
             if (supportedVideoSizes != null) {
-                Camera.Size infoSize = supportedVideoSizes.get(supportedVideoSizes.size() - 1);
-                int width = infoSize.width;
-                int height = infoSize.height;
-                value = width + "x" + height;
+                for (int i = 0; i <supportedVideoSizes.size(); i++ ){
+                    Camera.Size infoSize = supportedVideoSizes.get(i);
+                    int width = infoSize.width;
+                    int height = infoSize.height;
+                    value = width + "x" + height;
+                    resolutions.add(value);
+                }
             }
         } catch (Exception ex) {
             InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.CAMERA_VIDEO_RESOLUTION, ex.getMessage()));
         }
-        return value;
+
+        return resolutions;
     }
 
     /**
      * Get focal length camera
-     * @param characteristics
+     * @param characteristics CameraCharacteristics
      * @return String focal length camera
      */
     public String getFocalLength(CameraCharacteristics characteristics) {
@@ -366,7 +403,7 @@ public class Cameras
 
     /**
      * Get sensor size camera
-     * @param characteristics
+     * @param characteristics CameraCharacteristics
      * @return String sensor size camera
      */
     public String getSensorSize(CameraCharacteristics characteristics) {
@@ -381,10 +418,8 @@ public class Cameras
                         return Math.round(width * 100) / 100.0d + "x" + Math.round(height * 100) / 100.0d;
                     }
                 }
-                return value;
-            } else {
-                return value;
             }
+            return value;
         } catch (Exception ex) {
             InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.CAMERA_SENSOR_SIZE, ex.getMessage()));
         }
@@ -455,9 +490,8 @@ public class Cameras
      */
     public ArrayList<String> getSupportValue() {
         ArrayList<String> arrayList = new ArrayList<>();
-        Iterator it = getCatInfoCamera("/system/lib/libcameracustom.so", "SENSOR_DRVNAME_", 100).iterator();
-        while (it.hasNext()) {
-            arrayList.add(((String) it.next()).toLowerCase(Locale.US));
+        for (String s : getCatInfoCamera("/system/lib/libcameracustom.so", "SENSOR_DRVNAME_", 100)) {
+            arrayList.add(s.toLowerCase(Locale.US));
         }
         return arrayList;
     }

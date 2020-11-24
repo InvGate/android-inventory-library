@@ -86,7 +86,8 @@ public class Category extends LinkedHashMap<String, CategoryValue> {
 
     /**
      * This constructor load the Context of the instance and the name of the node in XML
-     * @param xType name of the node
+     * @param xType String name of the node
+     * @param tagName String name of the tag
      */
     public Category(String xType, String tagName) {
         mType = xType;
@@ -173,8 +174,8 @@ public class Category extends LinkedHashMap<String, CategoryValue> {
         }
     }
 
-    private void setXMLValues(XmlSerializer serializer, Entry<String, CategoryValue> entry) throws IOException {
-        CategoryValue categoryValue = this.get(entry.getKey());
+    private void setXMLValues(XmlSerializer serializer, Map.Entry<String, CategoryValue> data) throws IOException {
+        CategoryValue categoryValue = this.get(data.getKey());
         if (categoryValue.getCategory() == null) {
             /* If is a normal value */
             if (categoryValue.getValues() == null || categoryValue.getValues().size() <= 0) {
@@ -222,6 +223,7 @@ public class Category extends LinkedHashMap<String, CategoryValue> {
 
     /**
      * This is a public function that create a JSON
+     * @return JSONObject
      */
     public JSONObject toJSON() {
         try {
@@ -254,10 +256,10 @@ public class Category extends LinkedHashMap<String, CategoryValue> {
         }
     }
 
-    private void setJSONValues(JSONObject jsonCategories, Entry<String, CategoryValue> entry) throws JSONException {
-        CategoryValue categoryValue = this.get(entry.getKey());
-        if (entry.getValue().getCategory() == null) {
-            if (entry.getValue().getValues() == null) {
+    private void setJSONValues(JSONObject jsonCategories, Map.Entry<String, CategoryValue> data) throws JSONException {
+        CategoryValue categoryValue = this.get(data.getKey());
+        if (data.getValue().getCategory() == null) {
+            if (data.getValue().getValues() == null) {
                 jsonCategories.put(categoryValue.getJsonName(), categoryValue.getValue());
             } else {
                 jsonCategories.put(categoryValue.getJsonName(), categoryValue.getValues());
@@ -266,7 +268,7 @@ public class Category extends LinkedHashMap<String, CategoryValue> {
             Category category = categoryValue.getCategory();
             JSONObject newCategory = new JSONObject();
             for (CategoryValue value : category.values()) {
-                if (entry.getValue().getValues() == null) {
+                if (data.getValue().getValues() == null) {
                     newCategory.put(value.getJsonName(), value.getValue());
                 } else {
                     newCategory.put(value.getJsonName(), value.getValues());
