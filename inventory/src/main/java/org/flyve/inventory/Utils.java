@@ -188,9 +188,15 @@ public class Utils {
             jsonQuery.put("versionClient", appVersion);
             jsonQuery.put("deviceId", getDeviceId(context));
             TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
-            if (telephonyManager != null &&
-                    (context.checkPermission(android.Manifest.permission.READ_PHONE_STATE, android.os.Process.myPid(), android.os.Process.myUid()) == PackageManager.PERMISSION_GRANTED)) {
-                jsonQuery.put("IMEI", telephonyManager.getDeviceId());
+            try {
+                if (telephonyManager != null &&
+                        (context.checkPermission(android.Manifest.permission.READ_PHONE_STATE, android.os.Process.myPid(), android.os.Process.myUid()) == PackageManager.PERMISSION_GRANTED)) {
+                    jsonQuery.put("IMEI", telephonyManager.getDeviceId());
+                }
+            } catch (SecurityException ex) {
+                // Android 10 doesn't support this anymore
+                InventoryLog.e(InventoryLog.getMessage(context, CommonErrorType.MODEMS_IMEI, ex.getMessage()));
+                jsonQuery.put("IMEI", "");
             }
             jsonQuery.put("content", content);
 
