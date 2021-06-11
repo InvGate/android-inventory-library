@@ -297,8 +297,9 @@ public class OperatingSystem extends Categories {
         SDK26(NameOS.OREO,"8.0"),
         SDK27(NameOS.OREO,"8.1"),
         SDK28(NameOS.PIE,"9.0"),
-        SDK29(NameOS.Q,"10.0");
-        
+        SDK29(NameOS.Q,"10.0"),
+        SDK30(NameOS.ANDROID11,"11.0");
+
 
         private final String name;
         private final String version;
@@ -334,7 +335,8 @@ public class OperatingSystem extends Categories {
             public static final String NOUGAT="Nougat";
             public static final String OREO="Oreo";
             public static final String PIE="Pie";
-            public static final String Q="Q";
+            public static final String Q=""; // Empty because no more names from here
+            public static final String ANDROID11="";
         }
 
     }
